@@ -1,12 +1,12 @@
 # Booking Lab Gateway
 
 Private development repository for the agent-facing REST v1 and Streamable HTTP MCP service.
-The gateway runs as its own Node process. Its only provider setting is `SALON_ORIGIN`.
+The gateway runs as its own Node process. It targets the configured `SALON_ORIGIN` and authenticates that hop with a separate service credential.
 It has no database driver, salon checkout, admin cookie or service-wide booking credential.
 
 ## Run locally
 
-Use Node 24 and an independently running Booking Lab salon provider. In PowerShell:
+Use Node 24 and an independently running Booking Lab salon provider in split mode. Generate 32 cryptographically random bytes, encoded as 64 lowercase hex characters. Supply the same value as `GATEWAY_SERVICE_TOKEN` to the two server processes only. Use a dedicated token per environment and restart both services when rotating it. Keep it out of clients, URLs, logs, and Git. Use loopback locally and HTTPS for remote transport. In PowerShell:
 
 ```powershell
 npm ci

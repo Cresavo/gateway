@@ -6,8 +6,8 @@ import { nativeMcpSchema } from "./mcp-inputs.js";
 import { uspProfile, llmsText } from "./discovery.js";
 import { allowedRoute, connectProvider, errorReply } from "./provider.js";
 
-export function gateway(salon) {
-  const provider = connectProvider(salon);
+export function gateway(salon, serviceToken) {
+  const provider = connectProvider(salon, serviceToken);
   return createServer(async (req, res) => {
     async function send(response) {
       const bytes = Buffer.from(await response.arrayBuffer());
@@ -68,5 +68,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const port = Number(process.env.PORT || 3218);
   const salon = process.env.SALON_ORIGIN;
   if (!salon || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Set SALON_ORIGIN and a valid PORT");
-  gateway(salon).listen(port, "127.0.0.1", () => console.log("GATEWAY_READY " + port));
+  gateway(salon, process.env.GATEWAY_SERVICE_TOKEN).listen(port, "127.0.0.1", () => console.log("GATEWAY_READY " + port));
 }

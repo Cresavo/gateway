@@ -1,9 +1,12 @@
+import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { gateway } from "../src/server.js";
 
+const serviceToken = randomBytes(32).toString("hex");
+
 test("discovery advertises this gateway's contracts on its own origin", async t => {
-  const server = gateway("http://127.0.0.1:1");
+  const server = gateway("http://127.0.0.1:1", serviceToken);
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   t.after(() => server.close());
   const origin = "http://127.0.0.1:" + server.address().port;

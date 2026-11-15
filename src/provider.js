@@ -19,7 +19,9 @@ export function errorReply(status, code, message) {
     { status, headers: { "cache-control": "no-store" } });
 }
 
-export function connectProvider(value) {
+export function connectProvider(value, serviceToken) {
+  if (typeof serviceToken !== "string" || !/^[a-f0-9]{64}$/.test(serviceToken))
+    throw new Error("Set GATEWAY_SERVICE_TOKEN to a random 32-byte lowercase hex token");
   const origin = providerOrigin(value);
   return async function call(headers, method, path, search = "", body, key) {
     const internal = method === "GET" && path === "/api/v1/access";
@@ -32,6 +34,8 @@ export function connectProvider(value) {
     }
     if (!forward.has("authorization") && !forward.has("x-api-key"))
       return errorReply(401, "unauthorized", "An agent credential is required.");
+    // Only the configured service identity crosses this hop; inbound headers are untrusted.
+    forward.set("x-booking-gateway-token", serviceToken);
     if (key) forward.set("idempotency-key", key);
     if (body !== undefined) forward.set("content-type", "application/json");
     try {
