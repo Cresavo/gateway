@@ -29,6 +29,10 @@ test("only booking operations cross the boundary; admin cookies and spoofed iden
   const seen = [];
   const salon = await listen(t, createServer((req, res) => {
     seen.push({ path: req.url, method: req.method, headers: req.headers });
+    if (req.url === "/api/v1/access") {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ apiVersion: "v1", providerMode: "split", scopes: ["bookings:write"] }));
+    }
     res.writeHead(409, { "content-type": "application/json", "set-cookie": "private=value" });
     res.end(JSON.stringify({ error: { code: "slot_unavailable" } }));
   }));
@@ -42,12 +46,13 @@ test("only booking operations cross the boundary; admin cookies and spoofed iden
   assert.equal(body.status, 409);
   assert.equal((await body.json()).error.code, "slot_unavailable");
   assert.equal(body.headers.get("set-cookie"), null);
-  assert.equal(seen.length, 1);
-  assert.equal(seen[0].headers["idempotency-key"], "test-key");
-  assert.ok(seen[0].headers["x-booking-gateway-token"] === serviceToken);
+  assert.equal(seen.length, 2);
+  assert.equal(seen[0].path, "/api/v1/access");
+  assert.equal(seen[1].headers["idempotency-key"], "test-key");
+  assert.ok(seen[1].headers["x-booking-gateway-token"] === serviceToken);
   assert.equal(body.headers.get("x-booking-gateway-token"), null);
-  assert.equal(seen[0].headers.cookie, undefined);
-  assert.equal(seen[0].headers["x-forwarded-for"], undefined);
+  assert.equal(seen[1].headers.cookie, undefined);
+  assert.equal(seen[1].headers["x-forwarded-for"], undefined);
 });
 
 test("cross-origin browser requests and oversized writes never reach the salon", async t => {
@@ -78,7 +83,7 @@ test("MCP discovery requires client access and a restricted client cannot invoke
   const salon = await listen(t, createServer((req, res) => {
     seen.push(req.url);
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ apiVersion: "v1", scopes: ["services:read"] }));
+    res.end(JSON.stringify({ apiVersion: "v1", providerMode: "split", scopes: ["services:read"] }));
   }));
   const base = await listen(t, gateway(salon, serviceToken));
   assert.equal((await fetch(base + "/api/v1/mcp/schema")).status, 401);
@@ -87,4 +92,62 @@ test("MCP discovery requires client access and a restricted client cannot invoke
   const rpc = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "usp_bookings_create", arguments: {} } };
   assert.equal((await fetch(base + "/api/v1/mcp", { method: "POST", headers, body: JSON.stringify(rpc) })).status, 403);
   assert.deepEqual(seen, ["/api/v1/access", "/api/v1/access"]);
+});
+
+
+test("all agent operations refuse legacy, missing or malformed split confirmation", async t => {
+  const operations = [
+    ["GET", "/api/v1/services"], ["GET", "/api/v1/availability"],
+    ["GET", "/api/v1/bookings/existing"], ["POST", "/api/v1/bookings"],
+    ["POST", "/api/v1/bookings/existing/cancel"], ["POST", "/api/v1/proposals"],
+    ["GET", "/api/v1/proposals/existing"], ["GET", "/api/v1/mcp/schema"],
+    ["POST", "/api/v1/mcp"],
+  ];
+  let profile;
+  const seen = [];
+  const salon = await listen(t, createServer((req, res) => {
+    seen.push(req.url);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(typeof profile === "string" ? profile : JSON.stringify(profile));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  for (profile of [
+    { apiVersion: "v1", scopes: [] },
+    { apiVersion: "v1", providerMode: "standalone", scopes: [] },
+    { apiVersion: "v1", providerMode: true, scopes: [] },
+    { apiVersion: "v1", providerMode: "split", scopes: null },
+    null, "invalid profile",
+  ]) {
+    for (const [method, path] of operations) {
+      const result = await fetch(base + path, {
+        method, headers: { authorization: "Bearer synthetic", "content-type": "application/json" },
+        ...(method === "POST" ? { body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize",
+          params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "synthetic", version: "1" } } }) } : {}),
+      });
+      assert.equal(result.status, 503);
+      assert.equal((await result.json()).error.code, "provider_configuration_invalid");
+    }
+  }
+  assert.ok(seen.length >= operations.length);
+  assert.ok(seen.every(path => path === "/api/v1/access"));
+});
+
+test("a provider losing split mode is refused on the next request without restarting the gateway", async t => {
+  let split = true;
+  let bookings = 0;
+  const salon = await listen(t, createServer((req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    if (req.url === "/api/v1/access")
+      return res.end(JSON.stringify({ apiVersion: "v1", providerMode: split ? "split" : "standalone", scopes: ["bookings:write"] }));
+    bookings++;
+    res.end(JSON.stringify({ booking: { id: "synthetic-booking" } }));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  const create = () => fetch(base + "/api/v1/bookings", {
+    method: "POST", headers: { authorization: "Bearer synthetic" }, body: "{}",
+  });
+  assert.equal((await create()).status, 200);
+  split = false;
+  assert.equal((await create()).status, 503);
+  assert.equal(bookings, 1);
 });

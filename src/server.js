@@ -45,12 +45,6 @@ export function gateway(salon, serviceToken) {
       const headers = new Headers();
       for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);
       const call = provider.bind(null, headers);
-      // The legacy salon can expose fixture reads in its public read-only mode.
-      // Such a target cannot authorise gateway traffic. Fail closed there too.
-      if (req.method === "GET" && ["/api/v1/services", "/api/v1/availability"].includes(url.pathname)) {
-        const access = await call("GET", "/api/v1/access");
-        if (!access.ok) return await send(access);
-      }
       if (schema) {
         const auth = await call("GET", "/api/v1/access");
         return await send(auth.ok ? Response.json(nativeMcpSchema()) : auth);

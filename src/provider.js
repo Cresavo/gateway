@@ -38,8 +38,8 @@ export function connectProvider(value, serviceToken) {
     forward.set("x-booking-gateway-token", serviceToken);
     if (key) forward.set("idempotency-key", key);
     if (body !== undefined) forward.set("content-type", "application/json");
-    try {
-      const upstream = await fetch(url, { method, headers: forward, body, redirect: "error",
+    async function request(target, options) {
+      const upstream = await fetch(target, { ...options, headers: forward, redirect: "error",
         signal: AbortSignal.timeout(15000) });
       if (!upstream.headers.get("content-type")?.includes("application/json"))
         return errorReply(502, "provider_invalid_response", "Invalid salon response.");
@@ -47,6 +47,18 @@ export function connectProvider(value, serviceToken) {
       for (const name of ["retry-after", "www-authenticate", "x-booking-lab-api"])
         if (upstream.headers.has(name)) out.set(name, upstream.headers.get(name));
       return new Response(await upstream.text(), { status: upstream.status, headers: out });
+    }
+    try {
+      // Recheck for every operation: a restarted provider may have lost its split
+      // configuration. Never cache this confirmation across incoming requests.
+      const access = await request(new URL("/api/v1/access", origin), { method: "GET" });
+      if (!access.ok) return access;
+      let profile;
+      try { profile = await access.clone().json(); } catch { /* Refuse malformed confirmation below. */ }
+      if (profile?.apiVersion !== "v1" || profile.providerMode !== "split" || !Array.isArray(profile.scopes))
+        return errorReply(503, "provider_configuration_invalid", "Salon connection is not configured for gateway access.");
+      if (internal) return access;
+      return await request(url, { method, body });
     } catch {
       return errorReply(503, "provider_unavailable", "Salon unavailable. Retry with the same booking key.");
     }

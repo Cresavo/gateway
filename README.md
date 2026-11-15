@@ -28,7 +28,18 @@ authentication of provider-issued agent keys, stored customer mandates, booking 
 idempotency and transactional scheduling. The gateway asks the salon for active scopes before
 MCP dispatch. The salon independently checks the presented credential and performs its mandate,
 ownership and conflict checks at the point of use. Browser sessions never cross this boundary.
-One MCP call can result in both an access check and an operation against the provider's rate budget.
+Before forwarding any agent operation, the gateway calls authenticated `GET /api/v1/access`.
+A successful response must contain `apiVersion: "v1"`, `providerMode: "split"` and
+a scopes array. The salon sets the mode only after checking both credentials.
+An absent or standalone mode yields 503 `provider_configuration_invalid` before
+the requested operation is sent. An authentication failure retains its 401/403.
+This check is repeated for each operation, including status and cancellation.
+It is never cached across requests or a provider restart. Both server processes
+must be upgraded together. Discovery documents remain available without a provider.
+
+One MCP call can result in multiple access checks and an operation against the
+provider's rate budget. The confirmation describes the configured provider's
+mode at the access check. Loopback or HTTPS transport is still required.
 
 The initial adapter targets the Booking Lab salon v1 contract. An independent vendor would supply
 an adapter and its own authorisation integration. No partner compatibility or external assistant certification is implied.
