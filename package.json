@@ -1,0 +1,19 @@
+{
+  "name": "booking-lab-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "build": "node --check src/server.js && node --check src/provider.js && node --check src/mcp.js && node --check src/mcp-inputs.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
+  }
+}
