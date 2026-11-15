@@ -47,7 +47,7 @@ If an operation times out, retry with the **same** Idempotency-Key. The gateway 
 
 ## Cross-repository acceptance
 
-In the private [salon repository](https://github.com/niclasvestlund-YT/booking-lab-se/tree/refactor/gateway-provider-split),
+In the private [salon repository](https://github.com/niclasvestlund-YT/booking-lab-se/tree/main),
 follow `docs/GATEWAY_SPLIT.md`. The suite uses a real HTTP MCP SDK client and a standalone REST client.
 It checks that an authenticated salon calendar contains the precise MCP-created booking ID.
 The gateway uses local HTTP as a transport; no gateway process receives a database URL.
