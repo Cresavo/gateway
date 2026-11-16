@@ -9,6 +9,20 @@
   --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-face), ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* Salon page tokens (see DESIGN.md). Components use these variables only. */
+  --font-display: var(--font-display-face), var(--font-sans-face), sans-serif;
+  --color-paper: #f7f7f4;
+  --color-surface: #ffffff;
+  --color-text: #1b211f;
+  --color-quiet: #58615d;
+  --color-spruce: #20403a;
+  --color-lingon: #b3203d;
+  --color-rule: #dcd8d0;
+  --color-birch: #eae4da;
+  --color-spruce-soft: #e3ebe7;
+  --color-lingon-hover: #961a33;
+  --shadow-overlay: 0 18px 40px -20px rgb(27 33 31 / 0.35), 0 2px 6px rgb(27 33 31 / 0.06);
+
   --color-ink: #f6f4ef;      /* page */
   --color-ink-2: #ffffff;    /* raised surface */
   --color-panel: #efece5;    /* sunken surface */

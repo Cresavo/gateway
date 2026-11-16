@@ -24,3 +24,14 @@ Photograph of a single adult hand holding a modern smartphone upright, phone fac
 ## backdrop.jpg
 ```
 Abstract background texture for a social share image: warm off-white handmade paper (#f6f4ef) with very subtle fibers, a single soft diagonal band of muted terracotta clay color (#a5472a) at low opacity bleeding gently across the lower right corner, faint natural daylight gradient. Calm, premium, minimal, lots of empty space. No text, no letters, no shapes, no objects, no logos.```
+
+## Salongssidan (DESIGN.md) – bilder att ta fram
+
+Nuvarande platshållare: `public/assets/placeholder-reception.svg` (4:5), används i "Så går en bokning till" på desktop, dekorativ (`alt=""`).
+Följ DESIGN.md: ljust linne, trä, hud, en riktig receptionsdisk. Ingen terrakotta, ingen gräddvit Claude-ton, inga skärmar med påhittat gränssnitt.
+
+### reception-desk.webp (ersätter placeholder-reception.svg)
+```
+Editorial photograph, portrait 4:5, of the reception desk of a small Nordic hair salon in daylight. Light birch wood counter, a folded linen towel, a small ceramic dish with a few hair clips, a green plant leaf at the edge of the frame. Walls in cool off-white (#F7F7F4), a hint of deep spruce green (#20403A) in one object such as a ceramic vase. Soft window light from the left, calm, real, slightly imperfect. No people's faces, no text, no logos, no screens, no phones showing an interface.
+```
+Konvertering: 800×1000, webp q70. Byt `src` i `components/salon/salon-page.tsx` och behåll `alt=""` om bilden förblir dekorativ.

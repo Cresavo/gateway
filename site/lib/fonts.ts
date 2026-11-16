@@ -14,3 +14,11 @@ export const mono = localFont({
   weight: "100 800",
   display: "swap",
 });
+
+// Salon page display face (OFL). Body text keeps Schibsted Grotesk (`sans`).
+export const display = localFont({
+  src: "../node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2",
+  variable: "--font-display-face",
+  weight: "200 800",
+  display: "swap",
+});
