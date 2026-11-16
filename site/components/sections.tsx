@@ -150,7 +150,7 @@ export function FinalCta() {
       <Image
         src={stillLife}
         alt=""
-        sizes="100vw"
+        sizes="58vw"
         placeholder="blur"
         className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[58%] object-cover object-[60%_55%] lg:block"
       />
