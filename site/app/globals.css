@@ -85,9 +85,9 @@
   "How it works" draws itself as the figure scrolls through the viewport.
   One named view timeline on the figure; each piece has its own --from/--to range,
   with a deliberate gap after the customer's approval. Browsers without scroll-driven
-  animations, and visitors who prefer reduced motion, see the finished figure.
+  animations, visitors who prefer reduced motion, and print see the finished figure.
 */
-@media (prefers-reduced-motion: no-preference) {
+@media screen and (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
     .path-figure { view-timeline: --path block; }
     .path-step, .path-gate, .path-draw-x, .path-draw-y {
