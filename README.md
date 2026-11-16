@@ -48,6 +48,17 @@ The initial adapter targets the Booking Lab salon v1 contract. An independent ve
 an adapter and its own authorisation integration. No partner compatibility or external assistant certification is implied.
 If an operation times out, retry with the **same** Idempotency-Key. The gateway never invents a booking result.
 
+## Local customer proposal contract
+
+The exposed OpenAPI 1.4.1 now documents the existing `create_proposal`/`get_proposal`
+REST operations and conditional approval response. In the salon's opt-in
+`separate-lab` profile, the agent receives delivery metadata only; a private test
+operator delivers the credential to the fixed synthetic customer. The legacy
+local bearer-link lab remains a different, weaker contract. Neither verifies a
+real customer. See the salon runbook for strict loopback/test-database guards,
+client filesystem isolation and limits. This documentation sync adds no route,
+permission, transport, hosted delivery or new dependency.
+
 ## Cross-repository acceptance
 
 In the private [salon repository](https://github.com/niclasvestlund-YT/booking-lab-se/tree/main),
