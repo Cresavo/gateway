@@ -66,7 +66,7 @@ export function SiteHeader() {
         <div className="hidden md:block">
           <Link
             href="/docs"
-            className="inline-flex h-9 items-center rounded-full bg-fg px-4 text-[0.9rem] font-medium text-ink-2 transition-colors hover:bg-black"
+            className="hit inline-flex h-9 items-center rounded-full bg-fg px-4 text-[0.9rem] font-medium text-ink-2 transition-colors hover:bg-black"
           >
             Read the docs
           </Link>

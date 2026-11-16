@@ -22,7 +22,7 @@ export function CopyButton({ text, label = "Copy code" }: { text: string; label?
     <button
       type="button"
       onClick={copy}
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-ink-2 px-3 font-mono text-[11px] text-muted transition-colors hover:border-line-strong hover:text-fg"
+      className="hit inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-ink-2 px-3 font-mono text-[11px] text-muted transition-colors hover:border-line-strong hover:text-fg"
     >
       {copied ? <Check className="size-3.5 text-ok" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
       <span>{copied ? "Copied" : "Copy"}</span>

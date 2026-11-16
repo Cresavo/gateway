@@ -103,7 +103,7 @@ export function BookingDemo() {
           <button
             type="button"
             onClick={replay}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.82rem] text-muted transition-colors hover:bg-panel hover:text-fg"
+            className="hit inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.82rem] text-muted transition-colors hover:bg-panel hover:text-fg"
           >
             <RotateCcw className="size-3.5" aria-hidden /> Replay
           </button>
@@ -168,14 +168,15 @@ export function BookingDemo() {
           })}
         </ol>
 
-        <div className="min-h-[20.5rem] p-4 sm:min-h-[21.75rem] sm:p-5" aria-live="polite">
+        {/* Announce steps only once the visitor is driving the demo, not during autoplay. */}
+        <div className="min-h-[20.5rem] p-4 sm:min-h-[21.75rem] sm:p-5" aria-live={touched ? "polite" : "off"}>
           {step === 0 ? <RequestStep onNext={() => go(1)} actionRef={action} /> : null}
           {step === 1 ? <ProposalStep onNext={() => go(2)} actionRef={action} /> : null}
           {step === 2 ? <ApprovalStep onAnswer={answer} actionRef={action} /> : null}
           {step === 3 ? <ResultStep outcome={outcome} onReplay={replay} actionRef={action} /> : null}
         </div>
 
-        <MiniCalendar booked={booked} proposed={proposed} />
+        <MiniCalendar booked={booked} proposed={proposed} live={touched} />
       </div>
     </div>
     </LayoutGroup>
@@ -208,7 +209,7 @@ function NextButton({ actionRef, onClick, children }: { actionRef: ActionRef; on
       ref={actionRef}
       type="button"
       onClick={onClick}
-      className="group inline-flex h-10 items-center gap-2 rounded-full border border-line-strong bg-ink-2 px-4 text-[0.88rem] font-medium text-fg transition-colors hover:border-fg/40"
+      className="hit group inline-flex h-10 items-center gap-2 rounded-full border border-line-strong bg-ink-2 px-4 text-[0.88rem] font-medium text-fg transition-colors hover:border-fg/40"
     >
       {children}
       <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
@@ -412,14 +413,14 @@ const HOURS = [12, 13, 14, 15, 16];
 const ROW = 20; // px per half hour
 const y = (h: number, m: number) => ((h - 12) * 2 + m / 30) * ROW;
 
-function MiniCalendar({ booked, proposed }: { booked: boolean; proposed: boolean }) {
+function MiniCalendar({ booked, proposed, live }: { booked: boolean; proposed: boolean; live: boolean }) {
   return (
     <div className="border-t border-line bg-ink px-4 pb-4 pt-3" aria-label={`${demo.business} calendar, ${demo.dayLong}`}>
       <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="text-[0.82rem] font-medium text-fg">
           {demo.business}&apos;s calendar <span className="font-normal text-muted">· {demo.staff.name} · {demo.dayShort}</span>
         </p>
-        <p className="text-[0.75rem] text-muted" aria-live="polite">
+        <p className="text-[0.75rem] text-muted" aria-live={live ? "polite" : "off"}>
           {booked ? "1 new booking" : proposed ? "Proposal only, not reserved" : "No change"}
         </p>
       </div>

@@ -40,7 +40,7 @@ export function TwoViews() {
                   document.getElementById(`${base}-${next.id}`)?.focus();
                 }
               }}
-              className={`h-9 rounded-full px-3.5 text-[0.86rem] transition-colors ${
+              className={`hit h-9 rounded-full px-3.5 text-[0.86rem] transition-colors ${
                 view === v.id ? "bg-ink-2 font-medium text-fg shadow-[0_1px_2px_rgb(22_21_19/0.08)]" : "text-muted hover:text-fg"
               }`}
             >
