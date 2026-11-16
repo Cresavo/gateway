@@ -18,14 +18,15 @@ const line = "#e3dfd5";
 const lineStrong = "#d3cec2";
 const panel = "#efece5";
 
-// Static OFL font files (the site's own typeface), read at build time.
-const font = (file: string) => readFile(path.join(process.cwd(), "assets/og", file));
+// Static OFL font files (the site's own typeface, @fontsource/schibsted-grotesk), read at build time.
+const font = (file: string) => readFile(path.join(process.cwd(), "node_modules/@fontsource/schibsted-grotesk/files", file));
+const asset = (file: string) => readFile(path.join(process.cwd(), "assets/og", file));
 
 export default async function OpengraphImage() {
   const [regular, semibold, backdrop] = await Promise.all([
     font("schibsted-grotesk-latin-400-normal.woff"),
     font("schibsted-grotesk-latin-600-normal.woff"),
-    font("backdrop.jpg"), // generated paper texture, no text
+    asset("backdrop.jpg"), // generated paper texture, no text
   ]);
   const backdropSrc = `data:image/jpeg;base64,${backdrop.toString("base64")}`;
 
