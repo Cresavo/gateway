@@ -33,13 +33,16 @@ A successful response must contain `apiVersion: "v1"`, `providerMode: "split"` a
 a scopes array. The salon sets the mode only after checking both credentials.
 An absent or standalone mode yields 503 `provider_configuration_invalid` before
 the requested operation is sent. An authentication failure retains its 401/403.
-This check is repeated for each operation, including status and cancellation.
-It is never cached across requests or a provider restart. Both server processes
-must be upgraded together. Discovery documents remain available without a provider.
+This check is repeated for every incoming request, including status and cancellation.
+The MCP handshake and dispatch within that one request share the same access response.
+There is no cache across incoming requests. Each operation still authenticates in the salon.
+The salon also refuses gateway-tagged operations in standalone mode, including when it
+restarts between the access check and the operation. Both server processes must be
+upgraded together. Discovery documents remain available without a provider.
 
-One MCP call can result in multiple access checks and an operation against the
-provider's rate budget. The confirmation describes the configured provider's
-mode at the access check. Loopback or HTTPS transport is still required.
+An operation normally consumes two provider rate-budget units: access plus operation.
+Provider 5xx responses become a static 503 `provider_unavailable`; private response
+bodies and headers are not forwarded. Loopback or HTTPS transport is still required.
 
 The initial adapter targets the Booking Lab salon v1 contract. An independent vendor would supply
 an adapter and its own authorisation integration. No partner compatibility or external assistant certification is implied.
@@ -51,6 +54,11 @@ In the private [salon repository](https://github.com/niclasvestlund-YT/booking-l
 follow `docs/GATEWAY_SPLIT.md`. The suite uses a real HTTP MCP SDK client and a standalone REST client.
 It checks that an authenticated salon calendar contains the precise MCP-created booking ID.
 The gateway uses local HTTP as a transport; no gateway process receives a database URL.
+The salon's `npm run test:pair` starts both separate production processes against a
+fresh local test database. `scripts/integration/pair.json` pins this repository's exact
+revision. The suite also covers a lost successful response, retry, 20 concurrent
+attempts, credential revocation, a provider restart and configuration drift.
+See the salon guide for prerequisites, safe cleanup and explicit private CI dispatch.
 
 ## Source and licensing
 
