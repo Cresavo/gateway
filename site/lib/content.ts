@@ -17,111 +17,69 @@ export const maturityLabel: Record<Maturity, string> = {
 
 export const LOCAL_GATEWAY = "http://127.0.0.1:3218";
 
-export const flowSteps: {
-  n: number;
+/** The five commitments shown above the fold. `evidence` is for reviewers, not rendered. */
+export const principles: {
   title: string;
-  body: string;
-  surface: string[];
+  detail: string;
   maturity: Maturity;
-  note?: string;
+  state: string;
+  evidence: string;
 }[] = [
   {
-    n: 1,
-    title: "Discover availability",
-    body: "The agent reads the authorised catalog and asks for bookable start times. At most 14 days per request, up to 60 days ahead.",
-    surface: ["list_services", "get_availability", "GET /api/v1/availability"],
-    maturity: "verified",
-  },
-  {
-    n: 2,
-    title: "Create a booking proposal",
-    body: "The agent can prepare a booking for the customer to review. The gateway exposes the operation, but only lab configurations of the provider support it.",
-    surface: ["create_proposal", "get_proposal"],
+    title: "The customer approves every booking.",
+    detail: "The agent proposes a booking. Nothing is booked until the customer says yes to that exact service, time and price.",
     maturity: "experimental",
+    state: "Approval flow runs locally. Tying the yes to the right person is still open.",
+    evidence: "booking-lab-se main: AgentProposal → AgentMandate; proof/customer-approval-boundary 2026-11-16 reports identity binding FAIL.",
   },
   {
-    n: 3,
-    title: "Obtain customer approval",
-    body: "Booking requires a mandateId that the provider has already stored. The provider checks it against the client, service, staff member, time slot, price cap, expiry and single use. The agent's confirmed: true flag grants nothing on its own.",
-    surface: ["mandateId", "confirmed: true"],
+    title: "The salon decides who may book.",
+    detail: "Each agent gets its own revocable key with scopes and daily limits. The salon sees a log of every attempt.",
+    maturity: "verified",
+    state: "Keys, scopes, limits and audit log verified locally.",
+    evidence: "main: AgentApiKey (agentName, ownerName, scopes, revokedAt), quotas 5/client/day, AgentAuditEvent + /api/admin/audit.",
+  },
+  {
+    title: "One interface across booking systems.",
+    detail: "Agents learn one contract. Adapters translate it for each booking system the salon already uses.",
     maturity: "experimental",
-    note: "Today mandates are synthetic and issued by a trusted operator. Collecting real customer approval through an authorised channel is planned.",
+    state: "SimplyBook adapter runs locally. Nordic systems are next.",
+    evidence: "Owner statement 2026-11-16. Not found in the pushed repositories; only the in-process mock partner adapter is on main.",
   },
   {
-    n: 4,
-    title: "Confirm the booking",
-    body: "The provider books the slot in one transaction. Each attempt carries an Idempotency-Key. When two agents ask for the same slot, one succeeds and the other gets 409 slot_unavailable.",
-    surface: ["create_booking", "POST /api/v1/bookings"],
-    maturity: "verified",
+    title: "Payment stays separate from approval.",
+    detail: "Saying yes to a time is not paying for it. Deposits run on their own track with their own consent.",
+    maturity: "experimental",
+    state: "Swish deposit track is simulated.",
+    evidence: "Owner statement 2026-11-16. No Swish code in the pushed repositories.",
   },
   {
-    n: 5,
-    title: "Return a verifiable result",
-    body: "The agent gets a booking id and status it can read back. The cross-repository acceptance proof checks that exact id appears in the salon's own authenticated calendar.",
-    surface: ["get_booking", "GET /api/v1/bookings/{id}"],
-    maturity: "verified",
+    title: "Rails behind the assistant, not another app.",
+    detail: "Customers keep using ChatGPT, Claude or Grok. Booking Lab is the layer those assistants book through.",
+    maturity: "experimental",
+    state: "Tested locally with a real MCP client (Codex CLI). No assistant integration is certified.",
+    evidence: "proof/native-codex-consent: real Codex CLI via HTTP-MCP. ChatGPT web/mobile, Claude and Grok as clients not tested.",
   },
 ];
 
-export const problems: {
-  title: string;
-  problem: string;
-  answer: string;
-  maturity: Maturity;
-  href: string;
-}[] = [
-  {
-    title: "Fragmented booking integrations",
-    problem: "Every booking system has its own API, auth and quirks, so agents end up hard-coding one vendor at a time.",
-    answer: "The agent talks to one versioned contract (REST v1 and MCP). Each booking system sits behind a provider boundary. Today there is one provider: Booking Lab's own synthetic salon.",
-    maturity: "experimental",
-    href: "/docs#architecture",
+/** Three audiences side by side (Stripe-style paths). */
+export const sides = {
+  customer: {
+    eyebrow: "For customers",
+    title: "Your assistant asks. You decide.",
+    body: "The agent finds the time, but the booking is yours to approve. You see the salon, service, time and price before anything is booked, and you can say no.",
   },
-  {
-    title: "Duplicate integration work",
-    problem: "Teams rebuild the same discovery, schemas and error handling for REST clients and for MCP tool-calling agents.",
-    answer: "REST and MCP share the same operations and input schemas. Discovery is published at /.well-known/usp, /llms.txt, the OpenAPI document and the MCP schema.",
-    maturity: "verified",
-    href: "/docs#discovery",
+  salon: {
+    eyebrow: "For salons",
+    title: "Agents book on your terms.",
+    body: "Choose which agents may book and what they may do. Set daily limits, revoke a key at any time, and read back every attempt, including the ones that were refused.",
   },
-  {
-    title: "Booking conflicts",
-    problem: "Two agents, or an agent and the front desk, can both claim the same slot.",
-    answer: "The provider owns scheduling and books in a single transaction. In the acceptance proof, two transports race for one slot: one wins, the other gets a controlled 409.",
-    maturity: "verified",
-    href: "/docs#errors",
+  developer: {
+    eyebrow: "For developers",
+    title: "One small, strict contract.",
+    body: "REST v1 and MCP over Streamable HTTP, with idempotent booking, documented errors and discovery files agents can read on their own.",
   },
-  {
-    title: "Lost responses and retries",
-    problem: "A timeout leaves the agent unsure whether the booking happened. Retrying blindly creates duplicates.",
-    answer: "Creation requires an Idempotency-Key. Retrying with the same key and body returns the original booking (200, replayed: true). If the provider is unreachable, the gateway returns 503 and never invents a result.",
-    maturity: "verified",
-    href: "/docs#idempotency",
-  },
-  {
-    title: "Customer authorisation and approval",
-    problem: "An agent saying “the user confirmed” is not proof that the customer agreed to this booking.",
-    answer: "Agent keys are scoped and issued by the provider. Booking also needs a mandate the provider has stored. The provider checks it every time it is used. The mandates are synthetic today, not verified consent from real customers.",
-    maturity: "experimental",
-    href: "/docs#authorization",
-  },
-  {
-    title: "Consistent agent behaviour",
-    problem: "Loose schemas and vague errors leave every model to improvise differently.",
-    answer: "Inputs are strict and unknown fields are rejected. Error codes are documented. Before every operation the gateway checks that the provider is running in the expected mode, and refuses the call (503) if it is not.",
-    maturity: "verified",
-    href: "/docs#errors",
-  },
-];
-
-export const devFeatures: { title: string; body: string }[] = [
-  { title: "REST v1", body: "Services, availability, booking creation, status and cancellation, described by an OpenAPI 3.1 contract." },
-  { title: "MCP over Streamable HTTP", body: "The same operations as MCP tools at /api/v1/mcp, using the same agent key." },
-  { title: "Discovery", body: "A USP discovery profile at /.well-known/usp and an llms.txt index. Agents can find the endpoints without custom setup." },
-  { title: "Schemas", body: "Strict Zod input schemas, published as JSON Schema at /api/v1/mcp/schema." },
-  { title: "Agent authorisation", body: "Each request needs a provider-issued key with scopes, checked before the call is forwarded. Booking also requires a mandate the provider has stored." },
-  { title: "Idempotent booking", body: "A required Idempotency-Key makes retries safe. Replays don't consume another mandate or booking quota." },
-];
+};
 
 export const restEndpoints: { method: "GET" | "POST"; path: string; summary: string; scope: string }[] = [
   { method: "GET", path: "/api/v1/services?business={id}", summary: "List active services, prices and staff", scope: "services:read" },
@@ -163,71 +121,49 @@ export const gatewayErrors: { status: number; code: string; meaning: string }[] 
   { status: 413, code: "request_too_large", meaning: "Request body over 64 KiB." },
 ];
 
-export const useCases: { title: string; who: string; body: string; today: string; maturity: Maturity }[] = [
-  {
-    title: "AI receptionist for a salon",
-    who: "Teams building AI receptionists",
-    body: "An assistant answers a booking request, reads the salon's services and open times, and books under a stored mandate. The booking appears in the salon's own calendar.",
-    today: "Demonstrated end to end against Booking Lab's synthetic salon in the local two-process acceptance proof.",
-    maturity: "verified",
-  },
-  {
-    title: "Personal assistant requesting an appointment",
-    who: "Developers of agentic apps",
-    body: "A user's own assistant connects over MCP, finds a time that suits them and asks for the booking, without knowing which software the business runs.",
-    today: "Proven locally with an MCP SDK client over Streamable HTTP. A real end-user assistant connecting to a hosted gateway has not been verified.",
-    maturity: "experimental",
-  },
-  {
-    title: "Booking platform via a provider adapter",
-    who: "Booking platforms",
-    body: "A platform supplies an adapter and its own authorisation integration. Agents keep the same contract. The gateway doesn't change for each vendor.",
-    today: "Not built. No third-party platform is connected and no partner compatibility is implied.",
-    maturity: "planned",
-  },
-];
-
 export const status: Record<Maturity, { heading: string; intro: string; items: string[] }> = {
   verified: {
     heading: "Working today",
-    intro: "Implemented, and verified locally with synthetic data, automated tests and CI.",
+    intro: "Implemented and verified locally with synthetic data, automated tests and CI.",
     items: [
-      "REST v1: services, availability, create, status, cancel",
-      "Streamable HTTP MCP exposing the same operations",
-      "Idempotent creation and replay with Idempotency-Key",
-      "Controlled conflicts: one winner, 409 slot_unavailable for the other",
-      "Booking refused without a provider-stored mandate",
-      "Per-operation provider check that fails closed",
-      "Cross-repository acceptance proof: 10/10 PASS, booking id found in the salon calendar",
-      "Gateway test suite (10/10) green in CI on main",
+      "REST v1 and MCP over Streamable HTTP: services, availability, booking, status, cancel",
+      "Per-agent keys with scopes, revocation and daily limits",
+      "Audit log of agent activity for the salon",
+      "Idempotent booking: a retry returns the same booking, never a second one",
+      "Conflicts handled: one winner, a clean 409 for the other",
+      "No booking without a stored, single-use mandate",
+      "Booking id confirmed in the salon's own calendar (acceptance proof, 10/10)",
     ],
   },
   experimental: {
     heading: "Experimental",
-    intro: "Present in code, but limited in scope or only available in lab configurations.",
+    intro: "Runs locally in lab configurations. Useful to try, not ready to rely on.",
     items: [
-      "USP discovery profile and MCP name aliases (not full USP wire conformance)",
-      "Booking proposals, supported only by lab provider configurations",
-      "Mandates issued by a synthetic operator rather than by real customers",
-      "Mock partner adapter inside the provider's lab (in-process, loopback only)",
+      "Customer approval flow: proposal, yes, then booking. Binding the yes to the right person is not solved.",
+      "Third-party adapters: SimplyBook running locally, plus an in-process mock partner",
+      "Payment and deposit track kept separate from approval (Swish, simulated)",
+      "Tested with a real MCP client (Codex CLI) end to end",
+      "USP discovery profile and MCP name aliases (not full USP conformance)",
     ],
   },
   planned: {
     heading: "Roadmap",
-    intro: "Not built yet. Listed here so nothing above reads as a promise.",
+    intro: "Not built yet. Listed so nothing above reads as a promise.",
     items: [
-      "Integrations with third-party booking platforms",
-      "Real customer approval delivery and identity verification",
-      "Hosted, internet-facing gateway (it listens on loopback only today)",
-      "Holds, payments and rescheduling (outside v1)",
-      "Pilot with real businesses and customers (not started)",
+      "Verified customer identity behind every yes",
+      "Nordic booking systems beyond SimplyBook",
+      "Real Swish deposits and payment providers",
+      "Hosted, internet-facing gateway (loopback only today)",
+      "Pilot with real salons and customers (not started)",
     ],
   },
 };
 
 /** Claims deliberately kept off the site because nothing in the repositories proves them. */
 export const excludedClaims = [
-  "Integrations with named booking platforms or any partner compatibility",
+  "Partner status or endorsement from SimplyBook, Swish, OpenAI, Anthropic or xAI (names only, no logos)",
+  "That ChatGPT, Claude or Grok have been tested or certified as clients",
+  "That the customer's yes is verified to come from the real customer",
   "A hosted, publicly reachable sandbox or production gateway",
   "Real customer identity verification or verified consent",
   "Certification or compatibility with specific AI assistants",

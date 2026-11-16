@@ -7,7 +7,7 @@ import { Logo } from "./ui";
 
 const nav = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#why", label: "Why" },
+  { href: "/#salons", label: "For salons" },
   { href: "/#developers", label: "Developers" },
   { href: "/#status", label: "Status" },
   { href: "/docs", label: "Docs" },
@@ -40,15 +40,13 @@ export function SiteHeader() {
   return (
     <header
       className={`sticky top-0 z-50 border-b transition-colors duration-300 ${
-        scrolled || open ? "border-line bg-ink/80 backdrop-blur-xl" : "border-transparent bg-transparent"
+        scrolled || open ? "border-line bg-ink" : "border-transparent bg-ink"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
         <Link href="/" className="flex items-center gap-2.5 rounded-md text-fg" aria-label="Booking Lab Gateway, home">
-          <Logo className="size-7" />
-          <span className="text-[15px] font-semibold tracking-tight">
-            Booking Lab <span className="font-normal text-muted">Gateway</span>
-          </span>
+          <Logo className="size-[26px]" />
+          <span className="text-[15px] font-semibold tracking-[-0.01em]">Booking Lab</span>
         </Link>
 
         <nav aria-label="Primary" className="hidden md:block">
@@ -57,7 +55,7 @@ export function SiteHeader() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="rounded-full px-3 py-2 text-sm text-muted transition-colors hover:text-fg"
+                  className="rounded-full px-3 py-2 text-[0.9rem] text-muted transition-colors hover:text-fg"
                 >
                   {item.label}
                 </Link>
@@ -68,10 +66,10 @@ export function SiteHeader() {
 
         <div className="hidden md:block">
           <Link
-            href="/docs#sandbox"
-            className="inline-flex h-9 items-center rounded-full border border-line-strong px-4 text-sm text-fg transition-colors hover:border-white/25 hover:bg-white/[0.05]"
+            href="/docs"
+            className="inline-flex h-9 items-center rounded-full bg-fg px-4 text-[0.9rem] font-medium text-ink-2 transition-colors hover:bg-black"
           >
-            Run it locally
+            Read the docs
           </Link>
         </div>
 
@@ -109,7 +107,7 @@ export function SiteHeader() {
         <Link
           href="/docs#sandbox"
           onClick={() => setOpen(false)}
-          className="mt-5 flex h-11 items-center justify-center rounded-full bg-fg text-sm font-medium text-ink"
+          className="mt-5 flex h-11 items-center justify-center rounded-full bg-fg text-sm font-medium text-ink-2"
         >
           Run it locally
         </Link>

@@ -23,7 +23,7 @@ export function CopyButton({ text, label = "Copy code" }: { text: string; label?
     <button
       type="button"
       onClick={copy}
-      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 font-mono text-xs text-muted transition-colors hover:border-line-strong hover:text-fg"
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-ink-2 px-3 font-mono text-[11px] text-muted transition-colors hover:border-line-strong hover:text-fg"
     >
       {copied ? <Check className="size-3.5 text-ok" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
       <span>{copied ? "Copied" : "Copy"}</span>
@@ -41,7 +41,7 @@ export function CodeBlock({ code, title }: { code: string; title?: string }) {
         <span className="truncate font-mono text-xs text-faint">{title}</span>
         <CopyButton text={code} />
       </div>
-      <pre className="code-scroll overflow-x-auto p-4 font-mono text-[12.5px] leading-6 text-fg/90">
+      <pre className="code-scroll overflow-x-auto p-4 font-mono text-[12.5px] leading-6 text-fg">
         <code>{code}</code>
       </pre>
     </div>
@@ -69,7 +69,7 @@ export function CodeTabs({ examples }: { examples: Example[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-ink-2 shadow-[0_30px_80px_-40px_rgb(0_0_0/0.9)]">
+    <div className="overflow-hidden rounded-2xl border border-line bg-ink-2 surface-shadow">
       <div className="flex items-center justify-between gap-3 border-b border-line px-2 py-2 sm:px-3">
         <div role="tablist" aria-label="Code examples" className="flex gap-1">
           {examples.map((example, index) => (
@@ -87,7 +87,7 @@ export function CodeTabs({ examples }: { examples: Example[] }) {
               onClick={() => setActive(index)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={`h-8 rounded-md px-3 font-mono text-xs transition-colors ${
-                index === active ? "bg-white/[0.07] text-fg" : "text-muted hover:text-fg"
+                index === active ? "bg-panel text-fg" : "text-muted hover:text-fg"
               }`}
             >
               {example.label}
@@ -100,7 +100,7 @@ export function CodeTabs({ examples }: { examples: Example[] }) {
         <pre
           tabIndex={0}
           aria-label={`${current.label} example`}
-          className="code-scroll h-[22rem] overflow-auto p-4 font-mono text-[12.5px] leading-6 text-fg/90 sm:p-5"
+          className="code-scroll h-[22rem] overflow-auto p-4 font-mono text-[12.5px] leading-6 text-fg sm:p-5"
         >
           <code>{current.code}</code>
         </pre>
