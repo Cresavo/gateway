@@ -17,70 +17,6 @@ export const maturityLabel: Record<Maturity, string> = {
 
 export const LOCAL_GATEWAY = "http://127.0.0.1:3218";
 
-/** The five commitments shown above the fold. `evidence` is for reviewers, not rendered. */
-export const principles: {
-  title: string;
-  detail: string;
-  maturity: Maturity;
-  state: string;
-  evidence: string;
-}[] = [
-  {
-    title: "The customer approves every booking.",
-    detail: "The agent proposes a booking. Nothing is booked until the customer says yes to that exact service, time and price.",
-    maturity: "experimental",
-    state: "Approval flow runs locally. Tying the yes to the right person is still open.",
-    evidence: "booking-lab-se main: AgentProposal → AgentMandate; proof/customer-approval-boundary 2026-11-16 reports identity binding FAIL.",
-  },
-  {
-    title: "The salon decides who may book.",
-    detail: "Each agent gets its own revocable key with scopes and daily limits. The salon sees a log of every attempt.",
-    maturity: "verified",
-    state: "Keys, scopes, limits and audit log verified locally.",
-    evidence: "main: AgentApiKey (agentName, ownerName, scopes, revokedAt), quotas 5/client/day, AgentAuditEvent + /api/admin/audit.",
-  },
-  {
-    title: "One interface across booking systems.",
-    detail: "Agents learn one contract. Adapters translate it for each booking system the salon already uses.",
-    maturity: "experimental",
-    state: "SimplyBook adapter runs locally. Nordic systems are next.",
-    evidence: "Owner statement 2026-11-16. Not found in the pushed repositories; only the in-process mock partner adapter is on main.",
-  },
-  {
-    title: "Payment stays separate from approval.",
-    detail: "Saying yes to a time is not paying for it. Deposits run on their own track with their own consent.",
-    maturity: "experimental",
-    state: "Swish deposit track is simulated.",
-    evidence: "Owner statement 2026-11-16. No Swish code in the pushed repositories.",
-  },
-  {
-    title: "Rails behind the assistant, not another app.",
-    detail: "Customers keep using ChatGPT, Claude or Grok. Booking Lab is the layer those assistants book through.",
-    maturity: "experimental",
-    state: "Tested locally with a real MCP client (Codex CLI). No assistant integration is certified.",
-    evidence: "proof/native-codex-consent: real Codex CLI via HTTP-MCP. ChatGPT web/mobile, Claude and Grok as clients not tested.",
-  },
-];
-
-/** Three audiences side by side (Stripe-style paths). */
-export const sides = {
-  customer: {
-    eyebrow: "For customers",
-    title: "Your assistant asks. You decide.",
-    body: "The agent finds the time, but the booking is yours to approve. You see the salon, service, time and price before anything is booked, and you can say no.",
-  },
-  salon: {
-    eyebrow: "For salons",
-    title: "Agents book on your terms.",
-    body: "Choose which agents may book and what they may do. Set daily limits, revoke a key at any time, and read back every attempt, including the ones that were refused.",
-  },
-  developer: {
-    eyebrow: "For developers",
-    title: "One small, strict contract.",
-    body: "REST v1 and MCP over Streamable HTTP, with idempotent booking, documented errors and discovery files agents can read on their own.",
-  },
-};
-
 export const restEndpoints: { method: "GET" | "POST"; path: string; summary: string; scope: string }[] = [
   { method: "GET", path: "/api/v1/services?business={id}", summary: "List active services, prices and staff", scope: "services:read" },
   { method: "GET", path: "/api/v1/availability?business={id}&service={id}", summary: "Bookable start times (date, or from/to, optional staff)", scope: "availability:read" },
@@ -126,35 +62,36 @@ export const status: Record<Maturity, { heading: string; intro: string; items: s
     heading: "Working today",
     intro: "Implemented and verified locally with synthetic data, automated tests and CI.",
     items: [
-      "REST v1 and MCP over Streamable HTTP: services, availability, booking, status, cancel",
+      "REST v1 and MCP over Streamable HTTP: services, availability, booking, status and cancellation",
       "Per-agent keys with scopes, revocation and daily limits",
-      "Audit log of agent activity for the salon",
+      "An audit log of agent activity, including refused requests",
       "Idempotent booking: a retry returns the same booking, never a second one",
-      "Conflicts handled: one winner, a clean 409 for the other",
+      "Conflict handling: one request wins the slot, the other gets a clear 409",
       "No booking without a stored, single-use mandate",
-      "Booking id confirmed in the salon's own calendar (acceptance proof, 10/10)",
+      "The booking id checked in the salon's own calendar by a two-process acceptance proof",
     ],
   },
   experimental: {
     heading: "Experimental",
-    intro: "Runs locally in lab configurations. Useful to try, not ready to rely on.",
+    intro: "Runs locally in lab configurations. Useful to explore, not ready to rely on.",
     items: [
-      "Customer approval flow: proposal, yes, then booking. Binding the yes to the right person is not solved.",
-      "Third-party adapters: SimplyBook running locally, plus an in-process mock partner",
-      "Payment and deposit track kept separate from approval (Swish, simulated)",
-      "Tested with a real MCP client (Codex CLI) end to end",
-      "USP discovery profile and MCP name aliases (not full USP conformance)",
+      "Customer approval: proposal, then the customer's yes, then booking. In a lab profile the approval goes to a synthetic customer, not the agent. A real customer's identity is not verified.",
+      "Third-party provider adapters: a SimplyBook adapter running locally, and an in-process mock partner",
+      "A simulated deposit track, kept separate from approval. No payment is collected.",
+      "A real MCP client (Codex CLI) booking end to end on a local machine",
+      "USP discovery profile and MCP name aliases, without full USP conformance",
     ],
   },
   planned: {
-    heading: "Roadmap",
-    intro: "Not built yet. Listed so nothing above reads as a promise.",
+    heading: "Not built yet",
+    intro: "Listed so that nothing above reads as a promise.",
     items: [
-      "Verified customer identity behind every yes",
-      "Nordic booking systems beyond SimplyBook",
-      "Real Swish deposits and payment providers",
-      "Hosted, internet-facing gateway (loopback only today)",
-      "Pilot with real salons and customers (not started)",
+      "Verified customer identity behind every approval",
+      "Support for more booking providers",
+      "Real deposits and payment providers",
+      "A hosted, internet-facing gateway (it runs on loopback only today)",
+      "Searching and comparing many bookable businesses (the demo's salon list is illustrative)",
+      "A pilot with real businesses and customers",
     ],
   },
 };

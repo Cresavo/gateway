@@ -7,7 +7,6 @@ import { Logo } from "./ui";
 
 const nav = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#salons", label: "For salons" },
   { href: "/#developers", label: "Developers" },
   { href: "/#status", label: "Status" },
   { href: "/docs", label: "Docs" },
@@ -44,7 +43,7 @@ export function SiteHeader() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-        <Link href="/" className="flex items-center gap-2.5 rounded-md text-fg" aria-label="Booking Lab Gateway, home">
+        <Link href="/" className="flex items-center gap-2.5 rounded-md text-fg" aria-label="Booking Lab, home">
           <Logo className="size-[26px]" />
           <span className="text-[15px] font-semibold tracking-[-0.01em]">Booking Lab</span>
         </Link>
@@ -105,11 +104,11 @@ export function SiteHeader() {
           ))}
         </ul>
         <Link
-          href="/docs#sandbox"
+          href="/docs"
           onClick={() => setOpen(false)}
           className="mt-5 flex h-11 items-center justify-center rounded-full bg-fg text-sm font-medium text-ink-2"
         >
-          Run it locally
+          Read the docs
         </Link>
       </nav>
     </header>

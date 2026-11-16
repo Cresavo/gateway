@@ -122,7 +122,7 @@ export default function DocsPage() {
             <a
               href="/openapi.yaml"
               download
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-fg px-4 text-sm font-medium text-ink hover:bg-white"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-fg px-4 text-sm font-medium text-ink-2 hover:bg-black"
             >
               <Download className="size-4" aria-hidden /> Download OpenAPI
             </a>
@@ -237,7 +237,7 @@ export default function DocsPage() {
               <H2 id="discovery">Discovery</H2>
               <div className="mt-6 overflow-x-auto rounded-xl border border-line">
                 <table className="w-full min-w-[34rem] text-left text-sm">
-                  <thead className="bg-white/[0.03] text-xs text-faint">
+                  <thead className="bg-panel text-xs text-faint">
                     <tr>
                       <th scope="col" className="px-4 py-3 font-medium">Path</th>
                       <th scope="col" className="px-4 py-3 font-medium">Purpose</th>
@@ -265,7 +265,7 @@ export default function DocsPage() {
               <H2 id="rest">REST v1</H2>
               <div className="mt-6 overflow-x-auto rounded-xl border border-line">
                 <table className="w-full min-w-[40rem] text-left text-sm">
-                  <thead className="bg-white/[0.03] text-xs text-faint">
+                  <thead className="bg-panel text-xs text-faint">
                     <tr>
                       <th scope="col" className="px-4 py-3 font-medium">Operation</th>
                       <th scope="col" className="px-4 py-3 font-medium">Summary</th>
@@ -358,7 +358,7 @@ export default function DocsPage() {
               <h3 className="mt-8 text-sm font-medium text-fg">Provider codes (OpenAPI enum)</h3>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {errorCodes.map((code) => (
-                  <li key={code} className="rounded-md border border-line bg-white/[0.03] px-2 py-1 font-mono text-xs text-muted">
+                  <li key={code} className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-xs text-muted">
                     {code}
                   </li>
                 ))}
