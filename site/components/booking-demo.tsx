@@ -2,12 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowRight, Check, Hourglass, RotateCcw, UserRound, X } from "lucide-react";
+import { LayoutGroup, MotionConfig, motion } from "motion/react";
 import { demo } from "@/lib/demo";
 
 /*
   Interactive simulation with synthetic data. No model, booking or network call.
   The flow pauses at the customer's approval: only the visitor can approve.
+
+  One booking travels through the demo: the proposal card, the approval card and
+  the calendar block share a layoutId, so Motion morphs one into the next.
+  MotionConfig reducedMotion="user" turns those morphs into instant swaps.
 */
+
+const TRAVEL = { type: "spring", stiffness: 210, damping: 28, mass: 0.9 } as const;
 
 const STEPS = [
   { long: "Request", short: "Request" },
@@ -85,6 +92,8 @@ export function BookingDemo() {
   const proposed = (step === 1 || step === 2) && outcome === "pending";
 
   return (
+    <MotionConfig reducedMotion="user" transition={TRAVEL}>
+    <LayoutGroup>
     <div ref={root} id="demo" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-line bg-ink-2 shadow-[0_1px_0_rgb(22_21_19/0.03),0_18px_40px_-24px_rgb(22_21_19/0.25)]">
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
@@ -169,6 +178,8 @@ export function BookingDemo() {
         <MiniCalendar booked={booked} proposed={proposed} />
       </div>
     </div>
+    </LayoutGroup>
+    </MotionConfig>
   );
 }
 
@@ -237,17 +248,17 @@ function ProposalStep({ onNext, actionRef }: { onNext: () => void; actionRef: Ac
   return (
     <div className="animate-rise space-y-3.5">
       <AgentLine>Here is a proposal. Nothing is booked yet.</AgentLine>
-      <div className="rounded-xl border border-line bg-ink p-4">
-        <div className="flex items-baseline justify-between gap-3">
+      <motion.div layoutId="booking" className="rounded-xl border border-line bg-ink p-4" style={{ borderRadius: 12 }}>
+        <motion.div layout="position" className="flex items-baseline justify-between gap-3">
           <p className="font-medium text-fg">
             {demo.service} · {demo.business}
           </p>
           <p className="text-fg">{demo.price}</p>
-        </div>
-        <p className="mt-0.5 text-[0.84rem] text-muted">
+        </motion.div>
+        <motion.p layout="position" className="mt-0.5 text-[0.84rem] text-muted">
           {demo.durationMinutes} min with {demo.staff.name} · {demo.dayShort}
-        </p>
-        <div className="mt-3 grid grid-cols-3 gap-2" role="list" aria-label="Available times">
+        </motion.p>
+        <motion.div layout="position" className="mt-3 grid grid-cols-3 gap-2" role="list" aria-label="Available times">
           {demo.times.map((t) => (
             <span
               key={t}
@@ -260,8 +271,8 @@ function ProposalStep({ onNext, actionRef }: { onNext: () => void; actionRef: Ac
               {t === demo.start ? <span className="sr-only"> (proposed)</span> : null}
             </span>
           ))}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
       <NextButton actionRef={actionRef} onClick={onNext}>
         Send to the customer for approval
       </NextButton>
@@ -281,18 +292,20 @@ function ApprovalStep({ onAnswer, actionRef }: { onAnswer: (o: Outcome) => void;
       </div>
 
       {/* The customer's side: a separate surface the agent cannot act on. */}
-      <section
+      <motion.section
+        layoutId="booking"
         aria-label="Customer approval"
-        className="mt-3 overflow-hidden rounded-2xl border-2 border-ok bg-ink-2 shadow-[0_10px_24px_-16px_rgb(165_71_42/0.55)]"
+        style={{ borderRadius: 16 }}
+        className="mt-3 overflow-hidden border-2 border-ok bg-ink-2 shadow-[0_10px_24px_-16px_rgb(165_71_42/0.55)]"
       >
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-ok px-4 py-2 text-ink-2">
+        <motion.div layout="position" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-ok px-4 py-2 text-ink-2">
           <p className="inline-flex items-center gap-2 text-[0.84rem] font-medium">
             <UserRound className="size-4" aria-hidden />
             You, the customer
           </p>
           <p className="text-[0.78rem] font-medium">Not booked yet</p>
-        </div>
-        <div className="p-4 sm:px-5">
+        </motion.div>
+        <motion.div layout="position" className="p-4 sm:px-5">
           <p className="text-[1.08rem] font-semibold tracking-[-0.015em] text-fg">
             {demo.service} at {demo.business}
           </p>
@@ -309,14 +322,16 @@ function ApprovalStep({ onAnswer, actionRef }: { onAnswer: (o: Outcome) => void;
             <dd className="text-fg">{demo.price}, paid at the salon</dd>
           </dl>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <button
+            <motion.button
               ref={actionRef}
               type="button"
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 520, damping: 26 }}
               onClick={() => onAnswer("approved")}
               className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-ok px-5 text-[0.95rem] font-medium text-ink-2 transition-colors hover:bg-[#8f3c22] sm:flex-1"
             >
               <Check className="size-4" aria-hidden /> Approve booking
-            </button>
+            </motion.button>
             <button
               type="button"
               onClick={() => onAnswer("declined")}
@@ -325,8 +340,8 @@ function ApprovalStep({ onAnswer, actionRef }: { onAnswer: (o: Outcome) => void;
               Decline
             </button>
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
     </div>
   );
 }
@@ -346,9 +361,26 @@ function ResultStep({ outcome, onReplay, actionRef }: { outcome: Outcome; onRepl
     <div className="animate-rise space-y-4">
       <div className="rounded-xl border-l-4 border-ok bg-ok-dim p-4 sm:p-5">
         <p className="inline-flex items-center gap-2 text-[0.88rem] font-medium text-ok">
-          <span className="flex size-5 items-center justify-center rounded-full bg-ok text-ink-2">
-            <Check className="size-3" aria-hidden />
-          </span>
+          <motion.span
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 420, damping: 18, delay: 0.25 }}
+            className="flex size-5 items-center justify-center rounded-full bg-ok text-ink-2"
+          >
+            <svg viewBox="0 0 12 12" className="size-3" aria-hidden>
+              <motion.path
+                d="M2.5 6.3 5 8.6 9.5 3.6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.35, ease: "easeOut", delay: 0.45 }}
+              />
+            </svg>
+          </motion.span>
           Booking confirmed
         </p>
         <p className="mt-3 text-[1.15rem] font-semibold tracking-[-0.015em] text-fg">
@@ -418,15 +450,28 @@ function MiniCalendar({ booked, proposed }: { booked: boolean; proposed: boolean
           </div>
         ) : null}
         {booked ? (
-          <div
-            className="animate-rise absolute inset-x-0 flex items-center justify-between gap-2 rounded-md border-l-[3px] border-ok bg-ok-dim px-2.5"
-            style={{ top: y(13, 30) + 1, height: 1.5 * ROW - 2 }}
+          <motion.div
+            layoutId="booking"
+            className="absolute inset-x-0 z-10 flex items-center justify-between gap-2 border-l-[3px] border-ok bg-ok-dim px-2.5"
+            style={{ top: y(13, 30) + 1, height: 1.5 * ROW - 2, borderRadius: 6 }}
           >
-            <p className="truncate text-[0.75rem] font-medium leading-4 text-fg">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.25 }}
+              className="truncate text-[0.75rem] font-medium leading-4 text-fg"
+            >
               {demo.service} {demo.start}–{demo.end} · approved by customer
-            </p>
-            <code className="hidden font-mono text-[10.5px] text-ok sm:inline">{demo.bookingId}</code>
-          </div>
+            </motion.p>
+            <motion.code
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.25 }}
+              className="hidden font-mono text-[10.5px] text-ok sm:inline"
+            >
+              {demo.bookingId}
+            </motion.code>
+          </motion.div>
         ) : null}
       </div>
     </div>

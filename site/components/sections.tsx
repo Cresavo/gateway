@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import stillLife from "@/public/assets/still-life.webp";
 import { ArrowUpRight, Download, FileText } from "lucide-react";
 import { status, type Maturity } from "@/lib/content";
 import { site } from "@/lib/site";
@@ -143,22 +145,29 @@ export function Status() {
 
 export function FinalCta() {
   return (
-    <section aria-labelledby="get-started">
-      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:py-24">
-        <div className="grid grid-cols-1 items-end gap-8 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
-          <div>
-            <h2
-              id="get-started"
-              className="text-balance text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[2.8rem]"
-            >
-              Start with the contract.
-            </h2>
-            <p className="mt-4 max-w-xl text-[1.05rem] leading-7 text-muted">
-              The documentation covers the full interface, the approval rules and how the local sandbox is set up.
-              There&apos;s no hosted sandbox or sign-up yet, and the source repositories are private for now.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+    <section aria-labelledby="get-started" className="relative overflow-hidden">
+      {/* Generated still life (decorative). Empty table on the left holds the text on wide screens. */}
+      <Image
+        src={stillLife}
+        alt=""
+        sizes="100vw"
+        placeholder="blur"
+        className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[58%] object-cover object-[60%_55%] lg:block"
+      />
+      <div aria-hidden className="absolute inset-y-0 right-0 hidden w-[58%] bg-[linear-gradient(90deg,var(--color-ink),rgb(246_244_239/0)_40%)] lg:block" />
+      <div className="relative mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:py-32">
+        <div className="max-w-xl">
+          <h2
+            id="get-started"
+            className="text-balance text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-fg sm:text-[2.8rem]"
+          >
+            Start with the contract.
+          </h2>
+          <p className="mt-4 text-[1.05rem] leading-7 text-muted">
+            The documentation covers the full interface, the approval rules and how the local sandbox is set up.
+            There&apos;s no hosted sandbox or sign-up yet, and the source repositories are private for now.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/docs" className={buttonStyles.primary}>
               <FileText className="size-4" aria-hidden /> Read the documentation
             </Link>
@@ -168,6 +177,13 @@ export function FinalCta() {
           </div>
         </div>
       </div>
+      <Image
+        src={stillLife}
+        alt=""
+        sizes="100vw"
+        placeholder="blur"
+        className="aspect-[16/9] h-auto w-full object-cover object-[80%_50%] lg:hidden"
+      />
     </section>
   );
 }

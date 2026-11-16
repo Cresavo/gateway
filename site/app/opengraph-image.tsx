@@ -22,10 +22,12 @@ const panel = "#efece5";
 const font = (file: string) => readFile(path.join(process.cwd(), "assets/og", file));
 
 export default async function OpengraphImage() {
-  const [regular, semibold] = await Promise.all([
+  const [regular, semibold, backdrop] = await Promise.all([
     font("schibsted-grotesk-latin-400-normal.woff"),
     font("schibsted-grotesk-latin-600-normal.woff"),
+    font("backdrop.jpg"), // generated paper texture, no text
   ]);
+  const backdropSrc = `data:image/jpeg;base64,${backdrop.toString("base64")}`;
 
   const stop = (label: string, kind: "plain" | "dark" | "gate" = "plain") => (
     <div
@@ -72,7 +74,9 @@ export default async function OpengraphImage() {
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", background: paper, color: ink, fontFamily: "Schibsted Grotesk" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: paper, color: ink, fontFamily: "Schibsted Grotesk" }}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
+        <img src={backdropSrc} width={1200} height={630} style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 630 }} />
         <div style={{ display: "flex", flexDirection: "column", width: 770, padding: "64px 0 64px 72px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28, fontWeight: 600 }}>
             <div style={{ display: "flex", position: "relative", width: 44, height: 44, borderRadius: 11, background: ink }}>
