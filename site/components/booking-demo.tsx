@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowRight, Check, RotateCcw, UserRound, X } from "lucide-react";
+import { ArrowRight, Check, Hourglass, RotateCcw, UserRound, X } from "lucide-react";
 import { demo } from "@/lib/demo";
 
 /*
@@ -100,23 +100,51 @@ export function BookingDemo() {
           </button>
         </div>
 
-        <ol className="grid grid-cols-4 border-b border-line" aria-label="Demo progress">
+        <ol className="grid grid-cols-4 border-b border-line px-1 pb-2.5 pt-3.5" aria-label="Demo progress">
           {STEPS.map((label, i) => {
             const done = i < step || (i === 3 && step === 3);
             const current = i === step;
             const declined = i === 3 && step === 3 && outcome === "declined";
+            const reached = done || current;
             return (
               <li
                 key={label.long}
                 aria-current={current ? "step" : undefined}
-                className={`relative px-1 py-2.5 text-center text-[0.72rem] leading-4 sm:text-[0.78rem] ${
+                className={`relative flex flex-col items-center gap-1.5 text-center text-[0.72rem] leading-4 sm:text-[0.78rem] ${
                   current ? "font-medium text-fg" : done ? "text-muted" : "text-faint"
                 }`}
               >
-                <span className="inline-flex items-center gap-1">
-                  {done && !declined ? <Check className="size-3 shrink-0 text-ok" aria-hidden /> : null}
-                  {declined ? <X className="size-3 shrink-0" aria-hidden /> : null}
-                  {i === 3 && declined ? (
+                {/* Rail: the part already travelled is solid clay. */}
+                {i > 0 ? (
+                  <span aria-hidden className={`absolute left-0 right-1/2 top-[9px] h-0.5 ${reached ? "bg-ok" : "bg-line-strong"}`} />
+                ) : null}
+                {i < 3 ? (
+                  <span aria-hidden className={`absolute left-1/2 right-0 top-[9px] h-0.5 ${i < step ? "bg-ok" : "bg-line-strong"}`} />
+                ) : null}
+                <span
+                  aria-hidden
+                  className={`relative flex size-5 items-center justify-center border-2 ${i === 2 ? "rounded-md" : "rounded-full"} ${
+                    declined
+                      ? "border-fg bg-ink-2 text-fg"
+                      : done
+                        ? "border-ok bg-ok text-ink-2"
+                        : current
+                          ? "border-ok bg-ink-2 text-ok"
+                          : "border-line-strong bg-ink-2 text-faint"
+                  }`}
+                >
+                  {declined ? (
+                    <X className="size-3" strokeWidth={3} />
+                  ) : i === 2 ? (
+                    <UserRound className="size-3" strokeWidth={2.5} />
+                  ) : done ? (
+                    <Check className="size-3" strokeWidth={3} />
+                  ) : current ? (
+                    <span className="size-1.5 rounded-full bg-ok" />
+                  ) : null}
+                </span>
+                <span>
+                  {declined ? (
                     "Declined"
                   ) : (
                     <>
@@ -124,18 +152,14 @@ export function BookingDemo() {
                       <span className="sr-only sm:not-sr-only">{label.long}</span>
                     </>
                   )}
+                  <span className="sr-only">{current ? " (current step)" : done ? " (done)" : ""}</span>
                 </span>
-                <span className="sr-only">{current ? " (current step)" : done ? " (done)" : ""}</span>
-                <span
-                  aria-hidden
-                  className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${current ? "bg-ok" : done ? "bg-line-strong" : "bg-transparent"}`}
-                />
               </li>
             );
           })}
         </ol>
 
-        <div className="min-h-[19.5rem] p-4 sm:p-5" aria-live="polite">
+        <div className="min-h-[20.5rem] p-4 sm:min-h-[21.75rem] sm:p-5" aria-live="polite">
           {step === 0 ? <RequestStep onNext={() => go(1)} actionRef={action} /> : null}
           {step === 1 ? <ProposalStep onNext={() => go(2)} actionRef={action} /> : null}
           {step === 2 ? <ApprovalStep onAnswer={answer} actionRef={action} /> : null}
@@ -186,18 +210,22 @@ function RequestStep({ onNext, actionRef }: { onNext: () => void; actionRef: Act
     <div className="animate-rise space-y-3.5">
       <p className="text-[0.78rem] text-faint">The customer writes to their AI assistant</p>
       <Bubble>{demo.request}</Bubble>
-      <AgentLine>I checked availability at three salons:</AgentLine>
+      <AgentLine>Three salons have times. {demo.business} is first on Friday afternoon:</AgentLine>
       <ul className="divide-y divide-line rounded-xl border border-line">
         {demo.options.map((o) => (
           <li key={o.name} className={`flex items-center justify-between gap-3 px-3.5 py-2.5 text-[0.88rem] ${o.chosen ? "bg-ok-dim" : ""}`}>
-            <span className={o.chosen ? "font-medium text-fg" : "text-muted"}>{o.name}</span>
+            <span className={`inline-flex items-center gap-1.5 ${o.chosen ? "font-medium text-fg" : "text-muted"}`}>
+              {o.chosen ? <Check className="size-3.5 text-ok" aria-hidden /> : null}
+              {o.name}
+              {o.chosen ? <span className="sr-only"> (chosen)</span> : null}
+            </span>
             <span className="whitespace-nowrap text-muted">
               {o.price} · {o.next}
             </span>
           </li>
         ))}
       </ul>
-      <p className="text-[0.75rem] leading-5 text-faint">Fictional businesses. Demo data, not live listings.</p>
+      <p className="text-[0.78rem] leading-5 text-muted">Fictional businesses, not live listings. Comparing businesses isn&apos;t built yet.</p>
       <NextButton actionRef={actionRef} onClick={onNext}>
         See the proposal
       </NextButton>
@@ -244,52 +272,59 @@ function ProposalStep({ onNext, actionRef }: { onNext: () => void; actionRef: Ac
 function ApprovalStep({ onAnswer, actionRef }: { onAnswer: (o: Outcome) => void; actionRef: ActionRef }) {
   return (
     <div className="animate-rise">
-      <p className="mb-2.5 text-[0.84rem] text-muted">
-        The agent has stopped. <span className="text-fg">Only the customer can approve this.</span>
-      </p>
+      {/* The agent's side: stopped and waiting. */}
+      <div className="flex items-start justify-between gap-3">
+        <AgentLine>I&apos;ve asked you to approve this. I can&apos;t approve it myself.</AgentLine>
+        <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-panel px-2 py-0.5 text-[0.75rem] text-muted">
+          <Hourglass className="size-3" aria-hidden /> Waiting
+        </span>
+      </div>
+
+      {/* The customer's side: a separate surface the agent cannot act on. */}
       <section
         aria-label="Customer approval"
-        className="rounded-2xl border-2 border-ok bg-ok-dim/60 p-4 sm:p-5"
+        className="mt-3 overflow-hidden rounded-2xl border-2 border-ok bg-ink-2 shadow-[0_10px_24px_-16px_rgb(165_71_42/0.55)]"
       >
-        <div className="flex items-center justify-between gap-3">
-          <p className="inline-flex items-center gap-2 text-[0.84rem] font-medium text-fg">
-            <span className="flex size-6 items-center justify-center rounded-full bg-ok text-ink-2">
-              <UserRound className="size-3.5" aria-hidden />
-            </span>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-ok px-4 py-2 text-ink-2">
+          <p className="inline-flex items-center gap-2 text-[0.84rem] font-medium">
+            <UserRound className="size-4" aria-hidden />
             You, the customer
           </p>
-          <span className="rounded-full border border-line-strong bg-ink-2 px-2.5 py-0.5 text-[0.75rem] text-muted">Not booked yet</span>
+          <p className="text-[0.78rem] font-medium">Not booked yet</p>
         </div>
-        <dl className="mt-4 grid grid-cols-[5.5rem_1fr] gap-y-1.5 text-[0.9rem]">
-          <dt className="text-muted">Business</dt>
-          <dd className="text-fg">{demo.business}</dd>
-          <dt className="text-muted">Service</dt>
-          <dd className="text-fg">
-            {demo.service}, {demo.durationMinutes} min with {demo.staff.name}
-          </dd>
-          <dt className="text-muted">When</dt>
-          <dd className="text-fg">
-            {demo.dayLong}, {demo.start}–{demo.end}
-          </dd>
-          <dt className="text-muted">Price</dt>
-          <dd className="text-fg">{demo.price}, paid at the salon</dd>
-        </dl>
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          <button
-            ref={actionRef}
-            type="button"
-            onClick={() => onAnswer("approved")}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-ok px-5 text-[0.95rem] font-medium text-ink-2 transition-colors hover:bg-[#8f3c22]"
-          >
-            <Check className="size-4" aria-hidden /> Approve booking
-          </button>
-          <button
-            type="button"
-            onClick={() => onAnswer("declined")}
-            className="inline-flex h-11 items-center justify-center rounded-full border border-line-strong bg-ink-2 px-5 text-[0.95rem] text-fg transition-colors hover:border-fg/40"
-          >
-            Decline
-          </button>
+        <div className="p-4 sm:px-5">
+          <p className="text-[1.08rem] font-semibold tracking-[-0.015em] text-fg">
+            {demo.service} at {demo.business}
+          </p>
+          <dl className="mt-2.5 grid grid-cols-[4rem_1fr] gap-y-1 text-[0.9rem]">
+            <dt className="text-muted">When</dt>
+            <dd className="text-fg">
+              {demo.dayLong}, <span className="whitespace-nowrap">{demo.start}–{demo.end}</span>
+            </dd>
+            <dt className="text-muted">With</dt>
+            <dd className="text-fg">
+              {demo.staff.name}, {demo.durationMinutes} min
+            </dd>
+            <dt className="text-muted">Price</dt>
+            <dd className="text-fg">{demo.price}, paid at the salon</dd>
+          </dl>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              ref={actionRef}
+              type="button"
+              onClick={() => onAnswer("approved")}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-ok px-5 text-[0.95rem] font-medium text-ink-2 transition-colors hover:bg-[#8f3c22] sm:flex-1"
+            >
+              <Check className="size-4" aria-hidden /> Approve booking
+            </button>
+            <button
+              type="button"
+              onClick={() => onAnswer("declined")}
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-ink-2 px-5 text-[0.95rem] text-fg transition-colors hover:border-fg/40"
+            >
+              Decline
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -300,7 +335,7 @@ function ResultStep({ outcome, onReplay, actionRef }: { outcome: Outcome; onRepl
   if (outcome === "declined") {
     return (
       <div className="animate-rise space-y-4">
-        <AgentLine>Understood. Nothing was booked, and {demo.business}&apos;s calendar is unchanged.</AgentLine>
+        <AgentLine>Understood. You declined, so nothing was booked and {demo.business}&apos;s calendar is unchanged.</AgentLine>
         <NextButton actionRef={actionRef} onClick={onReplay}>
           Try again
         </NextButton>
@@ -309,7 +344,7 @@ function ResultStep({ outcome, onReplay, actionRef }: { outcome: Outcome; onRepl
   }
   return (
     <div className="animate-rise space-y-4">
-      <div className="rounded-2xl border border-line p-4 sm:p-5">
+      <div className="rounded-xl border-l-4 border-ok bg-ok-dim p-4 sm:p-5">
         <p className="inline-flex items-center gap-2 text-[0.88rem] font-medium text-ok">
           <span className="flex size-5 items-center justify-center rounded-full bg-ok text-ink-2">
             <Check className="size-3" aria-hidden />
@@ -326,12 +361,17 @@ function ResultStep({ outcome, onReplay, actionRef }: { outcome: Outcome; onRepl
           Booking id <code className="font-mono text-[0.8rem] text-fg">{demo.bookingId}</code>
         </p>
       </div>
-      <p className="text-[0.84rem] leading-6 text-muted">
-        Approved by the customer, booked by {demo.business}&apos;s system and placed in its calendar below.
+      <p className="text-[0.88rem] leading-6 text-muted">
+        You approved it, {demo.business}&apos;s system booked it, and the same booking is now in its calendar below.
       </p>
-      <NextButton actionRef={actionRef} onClick={onReplay}>
-        Replay the demo
-      </NextButton>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <NextButton actionRef={actionRef} onClick={onReplay}>
+          Replay the demo
+        </NextButton>
+        <a href="#two-views" className="text-[0.88rem] text-fg underline decoration-line-strong underline-offset-4 hover:decoration-fg">
+          See what the agent receives
+        </a>
+      </div>
     </div>
   );
 }

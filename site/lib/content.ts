@@ -75,9 +75,9 @@ export const status: Record<Maturity, { heading: string; intro: string; items: s
     heading: "Experimental",
     intro: "Runs locally in lab configurations. Useful to explore, not ready to rely on.",
     items: [
-      "Customer approval: proposal, then the customer's yes, then booking. In a lab profile the approval goes to a synthetic customer, not the agent. A real customer's identity is not verified.",
-      "Third-party provider adapters: a SimplyBook adapter running locally, and an in-process mock partner",
-      "A simulated deposit track, kept separate from approval. No payment is collected.",
+      "Customer approval: proposal, then the customer's yes, then booking. In the newest lab profile the approval request goes to a synthetic customer instead of the agent. A real customer's identity is not verified.",
+      "A provider adapter interface, exercised by a synthetic in-process mock partner. A SimplyBook adapter is being tried on a developer machine and isn't in the tested repositories yet.",
+      "A simulated deposit step, kept separate from approval. It is a local simulation only, and no payment is collected.",
       "A real MCP client (Codex CLI) booking end to end on a local machine",
       "USP discovery profile and MCP name aliases, without full USP conformance",
     ],

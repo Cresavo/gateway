@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { ImageResponse } from "next/og";
 import { demo } from "@/lib/demo";
 
@@ -7,60 +9,152 @@ export const contentType = "image/png";
 
 const ink = "#161513";
 const paper = "#f6f4ef";
+const white = "#ffffff";
 const clay = "#a5472a";
 const clayDim = "#f3e5de";
 const muted = "#57544d";
-const line = "#d3cec2";
+const faint = "#77736a";
+const line = "#e3dfd5";
+const lineStrong = "#d3cec2";
+const panel = "#efece5";
 
-export default function OpengraphImage() {
-  const stop = (label: string, dark = false) => (
+// Static OFL font files (the site's own typeface), read at build time.
+const font = (file: string) => readFile(path.join(process.cwd(), "assets/og", file));
+
+export default async function OpengraphImage() {
+  const [regular, semibold] = await Promise.all([
+    font("schibsted-grotesk-latin-400-normal.woff"),
+    font("schibsted-grotesk-latin-600-normal.woff"),
+  ]);
+
+  const stop = (label: string, kind: "plain" | "dark" | "gate" = "plain") => (
     <div
       style={{
         display: "flex",
-        padding: "14px 20px",
-        borderRadius: 14,
-        border: `2px solid ${dark ? ink : line}`,
-        background: dark ? ink : "#ffffff",
-        color: dark ? paper : ink,
-        fontSize: 24,
+        padding: "12px 18px",
+        borderRadius: 12,
+        border: `2px solid ${kind === "dark" ? ink : kind === "gate" ? clay : lineStrong}`,
+        background: kind === "dark" ? ink : white,
+        color: kind === "dark" ? paper : ink,
+        fontSize: 22,
       }}
     >
       {label}
     </div>
   );
-  const rail = <div style={{ display: "flex", width: 44, height: 3, background: clay, opacity: 0.6 }} />;
+  const rail = (grow = false) => <div style={{ display: "flex", height: 3, background: clay, ...(grow ? { flexGrow: 1 } : { width: 30 }) }} />;
+  const hour = (label: string, top: number) => (
+    <div style={{ position: "absolute", left: 0, right: 0, top, display: "flex", alignItems: "center" }}>
+      <div style={{ display: "flex", width: 62, fontSize: 16, color: faint }}>{label}</div>
+      <div style={{ display: "flex", flexGrow: 1, height: 1, background: line }} />
+    </div>
+  );
+  const other = (label: string, top: number, height: number) => (
+    <div
+      style={{
+        position: "absolute",
+        left: 62,
+        right: 0,
+        top,
+        height,
+        display: "flex",
+        padding: "8px 12px",
+        borderRadius: 8,
+        borderLeft: `4px solid ${lineStrong}`,
+        background: panel,
+        color: muted,
+        fontSize: 17,
+      }}
+    >
+      {label}
+    </div>
+  );
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", padding: 72, background: paper, color: ink, fontFamily: "sans-serif" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28, fontWeight: 600 }}>
-          <div style={{ display: "flex", width: 42, height: 42, borderRadius: 10, background: ink, alignItems: "center", justifyContent: "center" }}>
-            <div style={{ display: "flex", width: 13, height: 13, borderRadius: 7, background: clay }} />
+      <div style={{ width: "100%", height: "100%", display: "flex", background: paper, color: ink, fontFamily: "Schibsted Grotesk" }}>
+        <div style={{ display: "flex", flexDirection: "column", width: 770, padding: "64px 0 64px 72px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28, fontWeight: 600 }}>
+            <div style={{ display: "flex", position: "relative", width: 44, height: 44, borderRadius: 11, background: ink }}>
+              <div style={{ position: "absolute", left: 11, right: 11, top: 14, height: 3, borderRadius: 2, background: paper }} />
+              <div style={{ position: "absolute", left: 11, right: 11, top: 27, height: 3, borderRadius: 2, background: paper }} />
+              <div style={{ position: "absolute", left: 16, top: 9, width: 12, height: 12, borderRadius: 6, background: clay, border: `2px solid ${ink}` }} />
+            </div>
+            Booking Lab
           </div>
-          Booking Lab
+
+          <div style={{ display: "flex", flexDirection: "column", marginTop: 54, fontSize: 68, fontWeight: 600, letterSpacing: -2.6, lineHeight: 1.04 }}>
+            <div style={{ display: "flex" }}>Turn AI requests into</div>
+            <div style={{ display: "flex" }}>confirmed bookings.</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", marginTop: 24, fontSize: 27, lineHeight: 1.4, color: muted }}>
+            <div style={{ display: "flex" }}>A REST and MCP gateway for AI agents,</div>
+            <div style={{ display: "flex" }}>with customer approval built into the flow.</div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", marginTop: "auto" }}>
+            {stop("AI agent")}
+            {rail()}
+            {stop("Booking Lab", "dark")}
+            {rail()}
+            {stop("Customer approves", "gate")}
+            {rail(true)}
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", marginTop: 56, fontSize: 70, fontWeight: 700, letterSpacing: -2.5, lineHeight: 1.04 }}>
-          <div style={{ display: "flex" }}>Turn AI requests into</div>
-          <div style={{ display: "flex" }}>confirmed bookings.</div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", marginTop: "auto" }}>
-          {stop("AI agent")}
-          {rail}
-          {stop("Booking Lab", true)}
-          {rail}
-          <div style={{ display: "flex", padding: "12px 18px", borderRadius: 14, border: `3px solid ${clay}`, background: "#ffffff", fontSize: 24 }}>
-            Customer approves
-          </div>
-          {rail}
-          <div style={{ display: "flex", flexDirection: "column", padding: "10px 18px", borderLeft: `6px solid ${clay}`, borderRadius: 8, background: clayDim }}>
-            <div style={{ display: "flex", fontSize: 24, fontWeight: 600 }}>{`${demo.service} ${demo.start}–${demo.end}`}</div>
-            <div style={{ display: "flex", fontSize: 18, color: muted }}>Confirmed</div>
+        {/* The same calendar motif as the site's demo: the request ends as a time block. */}
+        <div style={{ display: "flex", flexDirection: "column", width: 430, padding: "64px 72px 64px 0" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              flexGrow: 1,
+              borderRadius: 20,
+              border: `2px solid ${line}`,
+              background: white,
+              padding: "22px 22px 0 22px",
+            }}
+          >
+            <div style={{ display: "flex", fontSize: 20, fontWeight: 600 }}>{`${demo.business}'s calendar`}</div>
+            <div style={{ display: "flex", fontSize: 17, color: muted, marginTop: 2 }}>{`${demo.staff.name} · ${demo.dayShort} · demo data`}</div>
+            <div style={{ display: "flex", position: "relative", flexGrow: 1, marginTop: 20 }}>
+              {hour("12:00", 0)}
+              {hour("13:00", 88)}
+              {hour("14:00", 176)}
+              {hour("15:00", 264)}
+              {hour("16:00", 352)}
+              {other("Massage", 14, 82)}
+              {other("Fotvård", 234, 82)}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 62,
+                  right: 0,
+                  top: 146,
+                  height: 64,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  padding: "0 12px",
+                  borderRadius: 8,
+                  borderLeft: `5px solid ${clay}`,
+                  background: clayDim,
+                }}
+              >
+                <div style={{ display: "flex", fontSize: 20, fontWeight: 600 }}>{`${demo.service} ${demo.start}–${demo.end}`}</div>
+                <div style={{ display: "flex", fontSize: 16, color: clay }}>Confirmed</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     ),
-    size,
+    {
+      ...size,
+      fonts: [
+        { name: "Schibsted Grotesk", data: regular, weight: 400, style: "normal" },
+        { name: "Schibsted Grotesk", data: semibold, weight: 600, style: "normal" },
+      ],
+    },
   );
 }

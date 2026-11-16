@@ -6,9 +6,9 @@ import { buttonStyles } from "./ui";
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="border-b border-line">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 px-5 pb-16 pt-10 sm:px-8 sm:pt-14 lg:grid-cols-[1fr_minmax(0,31rem)] lg:gap-14 lg:pb-20 lg:pt-16 [&>*]:min-w-0">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 px-5 pb-16 pt-10 sm:px-8 sm:pt-14 lg:grid-cols-[1fr_minmax(0,33rem)] lg:gap-14 lg:pb-20 lg:pt-16 [&>*]:min-w-0">
         <div className="lg:pt-8">
-          <p className="text-[0.9rem] font-medium text-ok">Booking infrastructure for AI agents</p>
+          <p className="text-[0.92rem] font-medium text-muted">Booking infrastructure for AI agents</p>
           <h1
             id="hero-title"
             className="mt-4 text-balance text-[2.4rem] font-semibold leading-[1.03] tracking-[-0.035em] text-fg sm:text-[3.4rem] lg:text-[3.75rem]"

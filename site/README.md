@@ -10,6 +10,8 @@ site/
   components/     header, hero, how-it-works diagram, sections, code tabs
   lib/content.ts  every product claim and maturity label (audit this file)
   lib/examples.ts code examples, matching openapi.yaml and src/mcp-inputs.js
+  lib/demo.ts     the one synthetic booking shared by demo, calendar, customer view and JSON
+  assets/og/      static OFL font files used only by the Open Graph image
   scripts/sync-contract.mjs  copies ../openapi.yaml to public/openapi.yaml
 ```
 

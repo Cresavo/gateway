@@ -204,8 +204,9 @@ export default function DocsPage() {
                 <Code>x-forwarded-for</Code> and spoofed gateway headers are dropped.
               </P>
               <P>
-                The verified adapter targets the Booking Lab salon v1 contract. Third-party adapters, such as SimplyBook,
-                are experimental and run locally only. No partner compatibility is implied.
+                The verified adapter targets the Booking Lab salon v1 contract. A provider adapter interface exists and is
+                exercised by a synthetic mock partner. Adapters for third-party systems, such as SimplyBook, are early local
+                experiments. No partner compatibility is implied.
               </P>
             </section>
 

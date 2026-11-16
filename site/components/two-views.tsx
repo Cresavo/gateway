@@ -10,13 +10,17 @@ const views = [
   { id: "agent", label: "Agent receives" },
 ] as const;
 
+const [jsonBefore, jsonAfter] = demoJson.split(demo.bookingId);
+const idMark = "rounded-[4px] bg-ok-dim px-1 py-0.5 font-mono text-fg";
+
+/** Side by side on wide screens, tabs on narrow ones. Both show the demo's booking. */
 export function TwoViews() {
   const [view, setView] = useState<(typeof views)[number]["id"]>("customer");
   const base = useId();
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-ink-2">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2.5">
+    <div id="two-views" className="scroll-mt-24 overflow-hidden rounded-2xl border border-line bg-ink-2">
+      <div className="border-b border-line px-3 py-2.5 lg:hidden">
         <div role="tablist" aria-label="Booking view" className="inline-flex rounded-full bg-panel p-0.5">
           {views.map((v, i) => (
             <button
@@ -25,7 +29,7 @@ export function TwoViews() {
               type="button"
               id={`${base}-${v.id}`}
               aria-selected={view === v.id}
-              aria-controls={`${base}-panel`}
+              aria-controls={`${base}-panel-${v.id}`}
               tabIndex={view === v.id ? 0 : -1}
               onClick={() => setView(v.id)}
               onKeyDown={(e) => {
@@ -36,24 +40,25 @@ export function TwoViews() {
                   document.getElementById(`${base}-${next.id}`)?.focus();
                 }
               }}
-              className={`h-8 rounded-full px-3.5 text-[0.86rem] transition-colors ${
-                view === v.id ? "bg-ink-2 text-fg shadow-[0_1px_2px_rgb(22_21_19/0.08)]" : "text-muted hover:text-fg"
+              className={`h-9 rounded-full px-3.5 text-[0.86rem] transition-colors ${
+                view === v.id ? "bg-ink-2 font-medium text-fg shadow-[0_1px_2px_rgb(22_21_19/0.08)]" : "text-muted hover:text-fg"
               }`}
             >
               {v.label}
             </button>
           ))}
         </div>
-        {view === "agent" ? (
-          <CopyButton text={demoJson} label="Copy JSON response" />
-        ) : (
-          <span className="text-[0.8rem] text-muted">Same booking as the demo</span>
-        )}
       </div>
 
-      <div role="tabpanel" id={`${base}-panel`} aria-labelledby={`${base}-${view}`} className="h-[23.5rem]">
-        {view === "customer" ? (
-          <div className="flex h-full items-center justify-center bg-ink p-5 sm:p-8">
+      <div className="lg:grid lg:grid-cols-[0.9fr_1.1fr] [&>*]:min-w-0">
+        <div
+          role="tabpanel"
+          id={`${base}-panel-customer`}
+          aria-labelledby={`${base}-customer`}
+          className={`bg-ink ${view === "customer" ? "" : "hidden lg:block"}`}
+        >
+          <p className="hidden h-12 items-center border-b border-line px-5 text-[0.9rem] font-medium text-fg lg:flex">Customer sees</p>
+          <div className="flex items-center justify-center p-5 sm:p-8 lg:py-10">
             <div className="w-full max-w-sm rounded-2xl border border-line bg-ink-2 p-5">
               <p className="inline-flex items-center gap-2 text-[0.88rem] font-medium text-ok">
                 <span className="flex size-5 items-center justify-center rounded-full bg-ok text-ink-2">
@@ -68,7 +73,7 @@ export function TwoViews() {
               <dl className="mt-5 divide-y divide-line border-y border-line text-[0.9rem]">
                 <div className="flex justify-between gap-3 py-2.5">
                   <dt className="text-muted">{demo.dayLong}</dt>
-                  <dd className="text-fg">
+                  <dd className="whitespace-nowrap text-fg">
                     {demo.start}–{demo.end}
                   </dd>
                 </div>
@@ -76,22 +81,42 @@ export function TwoViews() {
                   <dt className="text-muted">Price</dt>
                   <dd className="text-fg">{demo.price} at the salon</dd>
                 </div>
-                <div className="flex justify-between gap-3 py-2.5">
+                <div className="flex items-center justify-between gap-3 py-2.5">
                   <dt className="text-muted">Booking id</dt>
-                  <dd className="font-mono text-[0.82rem] text-fg">{demo.bookingId}</dd>
+                  <dd>
+                    <span className={`${idMark} text-[0.82rem]`}>{demo.bookingId}</span>
+                  </dd>
                 </div>
               </dl>
             </div>
           </div>
-        ) : (
+        </div>
+
+        <div
+          role="tabpanel"
+          id={`${base}-panel-agent`}
+          aria-labelledby={`${base}-agent`}
+          className={`border-line lg:border-l ${view === "agent" ? "" : "hidden lg:block"}`}
+        >
+          <div className="flex h-12 items-center justify-between gap-3 border-b border-line px-5">
+            <p className="text-[0.9rem] font-medium text-fg">
+              <span className="hidden lg:inline">Agent receives</span>
+              <span className="font-normal text-muted lg:ml-2">201 Created</span>
+            </p>
+            <CopyButton text={demoJson} label="Copy JSON response" />
+          </div>
           <pre
             tabIndex={0}
             aria-label="JSON booking response"
-            className="code-scroll h-full overflow-auto p-5 font-mono text-[12.5px] leading-[1.75] text-fg"
+            className="code-scroll overflow-x-auto p-5 font-mono text-[12.5px] leading-[1.75] text-fg"
           >
-            <code>{demoJson}</code>
+            <code>
+              {jsonBefore}
+              <span className={idMark}>{demo.bookingId}</span>
+              {jsonAfter}
+            </code>
           </pre>
-        )}
+        </div>
       </div>
     </div>
   );

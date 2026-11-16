@@ -35,24 +35,24 @@ export function Developers() {
   return (
     <section aria-labelledby="developers" className="border-b border-line">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:py-24">
-        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16 [&>*]:min-w-0">
-          <div>
-            <h2 id="developers" className="text-balance text-[1.9rem] font-semibold leading-[1.1] tracking-[-0.025em] text-fg sm:text-[2.5rem]">
-              One booking. Two views.
-            </h2>
-            <p className="mt-4 text-pretty text-[1.05rem] leading-7 text-muted">
-              The customer sees a booking they can understand. The agent gets a strict JSON object it can check. Both
-              show the booking from the demo above, with the same id.
-            </p>
-            <p className="mt-4 text-pretty text-[1.05rem] leading-7 text-muted">
-              Retry with the same idempotency key and you get the same booking back, marked{" "}
-              <code className="font-mono text-[0.88em] text-fg">&quot;replayed&quot;: true</code>.
-            </p>
-          </div>
+        <div className="max-w-2xl">
+          <h2 id="developers" className="text-balance text-[1.9rem] font-semibold leading-[1.1] tracking-[-0.025em] text-fg sm:text-[2.5rem]">
+            One booking. Two views.
+          </h2>
+          <p className="mt-4 text-pretty text-[1.05rem] leading-7 text-muted">
+            The customer sees a booking they can understand. The agent gets a strict JSON object it can check. Both
+            show the booking from the demo above, with the same id.
+          </p>
+        </div>
+        <div className="mt-10">
           <TwoViews />
+          <p className="mt-4 max-w-3xl text-[0.92rem] leading-6 text-muted">
+            Illustrative values in the shape of the real contract. Retry with the same idempotency key and you get the
+            same booking back, marked <code className="font-mono text-[0.88em] text-fg">&quot;replayed&quot;: true</code>.
+          </p>
         </div>
 
-        <div className="mt-16 divide-y divide-line border-y border-line">
+        <div className="mt-14 divide-y divide-line border-y border-line">
           {interfaces.map((i) => (
             <div key={i.name} className="grid gap-2 py-6 md:grid-cols-[12rem_1fr_auto] md:items-baseline md:gap-8">
               <div>
@@ -154,8 +154,8 @@ export function FinalCta() {
               Start with the contract.
             </h2>
             <p className="mt-4 max-w-xl text-[1.05rem] leading-7 text-muted">
-              The documentation covers the full interface, the approval rules and how the local sandbox is set up. The
-              source repositories are private for now.
+              The documentation covers the full interface, the approval rules and how the local sandbox is set up.
+              There&apos;s no hosted sandbox or sign-up yet, and the source repositories are private for now.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">

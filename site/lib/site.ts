@@ -12,6 +12,6 @@ export const site = {
   name: "Booking Lab Gateway",
   title: "Booking Lab Gateway: booking infrastructure for AI agents",
   description:
-    "Connect AI agents to booking systems through one consistent interface. Discover availability, request bookings, handle approvals and confirm reservations over REST or MCP. Currently a local proof of concept with synthetic data.",
+    "A REST and MCP gateway between AI agents and booking providers, with customer approval built into the flow. Currently a local proof of concept with synthetic data.",
   url: resolveSiteUrl(),
 };
