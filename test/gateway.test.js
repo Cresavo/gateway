@@ -151,3 +151,51 @@ test("a provider losing split mode is refused on the next request without restar
   assert.equal((await create()).status, 503);
   assert.equal(bookings, 1);
 });
+
+test("provider 5xx bodies are sanitised on both access and actual operations", async t => {
+  let failAccess = true;
+  const marker = "synthetic-internal-detail";
+  const salon = await listen(t, createServer((req, res) => {
+    if (req.url === "/api/v1/access" && !failAccess) {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ apiVersion: "v1", providerMode: "split", scopes: ["bookings:read"] }));
+    }
+    res.writeHead(500, { "content-type": "application/json", "x-internal": marker });
+    res.end(JSON.stringify({ error: { message: marker } }));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  for (failAccess of [true, false]) {
+    const response = await fetch(base + "/api/v1/bookings/synthetic", { headers: { authorization: "Bearer synthetic" } });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("x-internal"), null);
+    const body = await response.text();
+    assert.equal(body.includes(marker), false);
+    assert.equal(JSON.parse(body).error.code, "provider_unavailable");
+  }
+});
+
+test("MCP reuses the access check only within the incoming request", async t => {
+  const seen = [];
+  const salon = await listen(t, createServer((req, res) => {
+    seen.push(req.url);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(req.url === "/api/v1/access"
+      ? { apiVersion: "v1", providerMode: "split", scopes: ["services:read"] }
+      : { apiVersion: "v1", business: { id: "demo" }, services: [] }));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  const rpc = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "list_services", arguments: { business: "demo" } } };
+  for (let i = 0; i < 2; i++) {
+    const response = await fetch(base + "/api/v1/mcp", { method: "POST", headers: {
+      authorization: "Bearer synthetic", "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+    }, body: JSON.stringify(rpc) });
+    assert.equal(response.status, 200);
+    const text = await response.text();
+    const data = response.headers.get("content-type").includes("text/event-stream")
+      ? text.split("\n").find(line => line.startsWith("data: ")).slice(6)
+      : text;
+    assert.equal(JSON.parse(data).result.isError ?? false, false);
+  }
+  assert.deepEqual(seen, ["/api/v1/access", "/api/v1/services?business=demo", "/api/v1/access", "/api/v1/services?business=demo"]);
+});

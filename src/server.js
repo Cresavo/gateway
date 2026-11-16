@@ -44,7 +44,7 @@ export function gateway(salon, serviceToken) {
       const body = chunks.length ? Buffer.concat(chunks) : undefined;
       const headers = new Headers();
       for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);
-      const call = provider.bind(null, headers);
+      const call = provider(headers);
       if (schema) {
         const auth = await call("GET", "/api/v1/access");
         return await send(auth.ok ? Response.json(nativeMcpSchema()) : auth);
