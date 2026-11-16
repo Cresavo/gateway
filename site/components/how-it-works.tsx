@@ -131,7 +131,7 @@ export function HowItWorks() {
                   </span>
                 </p>
                 <p className="flex items-center justify-between gap-3">
-                  <span className="text-fg">Example deposit: 100 kr via Swish</span>
+                  <span className="text-fg">Example deposit: 100 kr</span>
                   <span className="inline-flex items-center gap-1 whitespace-nowrap text-muted">
                     <Minus className="size-3.5" aria-hidden /> Not paid
                   </span>

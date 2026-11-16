@@ -274,7 +274,7 @@ function ApprovalStep({ onAnswer, actionRef }: { onAnswer: (o: Outcome) => void;
     <div className="animate-rise">
       {/* The agent's side: stopped and waiting. */}
       <div className="flex items-start justify-between gap-3">
-        <AgentLine>I&apos;ve asked you to approve this. I can&apos;t approve it myself.</AgentLine>
+        <AgentLine>{demo.business} has sent you this request. I can&apos;t approve it for you.</AgentLine>
         <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-panel px-2 py-0.5 text-[0.75rem] text-muted">
           <Hourglass className="size-3" aria-hidden /> Waiting
         </span>
