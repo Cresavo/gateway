@@ -4,7 +4,7 @@
  * Identifiers the server generates are shown as <placeholders>, not invented.
  */
 
-export type Example = { id: string; label: string; language: string; caption: string; code: string };
+export type Example = { id: string; label: string; caption: string; code: string };
 
 export const bookingBody = `{
   "business": "demo",
@@ -24,7 +24,6 @@ export const examples: Example[] = [
   {
     id: "rest",
     label: "REST",
-    language: "bash",
     caption: "Create a booking against a local gateway. The key comes from your environment, never the URL.",
     code: `curl -sS http://127.0.0.1:3218/api/v1/bookings \\
   -H "Authorization: Bearer $BOOKING_LAB_AGENT_KEY" \\
@@ -35,7 +34,6 @@ export const examples: Example[] = [
   {
     id: "mcp",
     label: "MCP",
-    language: "json",
     caption: "The same booking as an MCP tools/call, sent to POST /api/v1/mcp with the same key.",
     code: `{
   "jsonrpc": "2.0",
@@ -51,9 +49,9 @@ export const examples: Example[] = [
       "staffId": "staff-demo",
       "start": "2026-11-24T09:00:00+01:00",
       "customer": {
-    "name": "Test Person",
-    "email": "person@example.test"
-  },
+        "name": "Test Person",
+        "email": "person@example.test"
+      },
       "confirmed": true,
       "mandateId": "<operator-issued-mandate-id>"
     }
@@ -63,7 +61,6 @@ export const examples: Example[] = [
   {
     id: "response",
     label: "Response",
-    language: "json",
     caption: "201 on creation. A retry with the same key and body returns 200 with replayed: true and the same booking.",
     code: `{
   "apiVersion": "v1",
