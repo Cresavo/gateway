@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: Booking Lab Agent API
+  version: "1.3.0-sandbox"
+  description: |
+    Sandbox API for AI agents on the synthetic Booking Lab demo salon (Salong Eko):
+    services, availability, booking with Idempotency-Key, booking status and
+    cancellation. The same tools are exposed over MCP (Streamable HTTP) at
+    /api/v1/mcp with the same key. Rescheduling is not part of v1.
+    Every key belongs to one business plus a named agent and a responsible person.
+    Ownership belongs to a stable client, not a credential: operator rotation
+    revokes the old key while retaining booking ownership and idempotency.
+    Creation requires a server-stored synthetic operator mandate. This is not
+    verified consent from a real customer.
+    Place/schedule ids are resolved by the server and checked against the stored
+    grant; booking input cannot override them. USP discovery and MCP name aliases
+    retain this native contract, rather than the canonical USP wire format.
+servers:
+  - url: /
+security:
+  - bearerKey: []
+  - apiKeyHeader: []
+paths:
+  /api/v1/services:
+    get:
+      summary: List active services for a business
+      parameters:
+        - $ref: "#/components/parameters/business"
+      responses:
+        "200":
+          description: Services
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServicesResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/availability:
+    get:
+      summary: Available start times for a service
+      description: Use either `date`, or `from` (+ optional `to`). At most 14 days per request. The engine only offers days from today up to 60 days ahead.
+      parameters:
+        - $ref: "#/components/parameters/business"
+        - { name: service, in: query, required: true, schema: { type: string }, example: fotvard }
+        - { name: date, in: query, schema: { type: string, format: date }, example: "2026-11-16" }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: staff, in: query, schema: { type: string }, description: Optional staff id filter }
+      responses:
+        "200":
+          description: Slots sorted by start, then staff id
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/bookings:
+    post:
+      summary: Book one slot from /availability
+      description: |
+        Requires mandateId issued by the trusted synthetic test operator outside this API.
+        The server checks client, business, service, staff, complete treatment interval,
+        current price cap, expiry, revocation and one-booking use. confirmed=true alone
+        grants no authority. No API or MCP tool issues mandates.
+        The sandbox only accepts customer emails ending in @example.test. Retrying with the same
+        Idempotency-Key and body returns the same booking (200, replayed=true). Engine limits apply:
+        5 bookings per stable client per day, 3 per normalised customer email per day.
+        A replay returns the original booking snapshot only for the same client,
+        payload and original mandateId, even after credential rotation. Replays
+        do not consume another mandate or booking quota. A mandate's later expiry
+        or revocation stops new writes, not read-only retries of an existing result.
+      security: [{ bearerKey: [] }, { apiKeyHeader: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, pattern: "^[A-Za-z0-9_-]{1,64}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookingRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BookingResponse" } } } }
+        "200": { description: Idempotent replay, content: { application/json: { schema: { $ref: "#/components/schemas/BookingResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/bookings/{id}:
+    get:
+      summary: Status of a booking owned by this stable client
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Booking, content: { application/json: { schema: { $ref: "#/components/schemas/BookingResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/bookings/{id}/cancel:
+    post:
+      summary: Cancel a booking created by this key (idempotent)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Cancelled, content: { application/json: { schema: { $ref: "#/components/schemas/CancelResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    bearerKey: { type: http, scheme: bearer, description: "Authorization: Bearer blk_<prefix>_<secret>" }
+    apiKeyHeader: { type: apiKey, in: header, name: X-API-Key }
+  parameters:
+    business:
+      { name: business, in: query, required: true, schema: { type: string }, example: demo, description: Must equal the key's business. }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Business:
+      type: object
+      required: [id, name, timeZone]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        timeZone: { type: string, example: Europe/Stockholm }
+        locationId: { type: string, example: demo-location }
+    Staff:
+      type: object
+      required: [id, name]
+      properties: { id: { type: string }, name: { type: string } }
+    Service:
+      type: object
+      required: [id, name, durationMinutes, bufferMinutes, price, version, staff]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        durationMinutes: { type: integer }
+        bufferMinutes: { type: integer }
+        price:
+          type: object
+          required: [amountMinor, currency]
+          properties:
+            amountMinor: { type: integer, description: Öre (1/100 SEK) }
+            currency: { type: string, const: SEK }
+        version: { type: integer, description: Current service version required by booking creation. }
+        staff: { type: array, items: { $ref: "#/components/schemas/Staff" } }
+    Slot:
+      type: object
+      required: [start, end, durationMinutes, serviceId, serviceVersion, staff]
+      properties:
+        start: { type: string, format: date-time, example: "2026-11-16T09:00:00+01:00" }
+        end: { type: string, format: date-time, example: "2026-11-16T10:00:00+01:00" }
+        durationMinutes: { type: integer }
+        serviceId: { type: string }
+        serviceVersion: { type: integer }
+        locationId: { type: string, description: Server-resolved synthetic venue }
+        scheduleId: { type: string, description: Existing Staff-owned weekly and exception schedule }
+        staff: { $ref: "#/components/schemas/Staff" }
+    ServicesResponse:
+      type: object
+      required: [apiVersion, business, services]
+      properties:
+        apiVersion: { type: string, const: v1 }
+        business: { $ref: "#/components/schemas/Business" }
+        services: { type: array, items: { $ref: "#/components/schemas/Service" } }
+    AvailabilityResponse:
+      type: object
+      required: [apiVersion, business, service, range, slots]
+      properties:
+        apiVersion: { type: string, const: v1 }
+        business: { $ref: "#/components/schemas/Business" }
+        service: { $ref: "#/components/schemas/Service" }
+        range:
+          type: object
+          required: [from, to, timeZone]
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+            timeZone: { type: string }
+        slots: { type: array, items: { $ref: "#/components/schemas/Slot" } }
+    BookingRequest:
+      type: object
+      additionalProperties: false
+      required: [business, serviceId, serviceVersion, staffId, start, customer, confirmed, mandateId]
+      properties:
+        business: { type: string, example: demo }
+        serviceId: { type: string, example: fotvard }
+        serviceVersion: { type: integer, example: 1 }
+        staffId: { type: string, example: staff-demo }
+        start: { type: string, format: date-time, example: "2026-11-16T09:00:00+01:00" }
+        customer:
+          type: object
+          required: [name, email]
+          properties:
+            name: { type: string }
+            email: { type: string, format: email, example: "person@example.test" }
+        confirmed: { type: boolean, const: true }
+        mandateId: { type: string, minLength: 1, maxLength: 128, description: Opaque operator-issued synthetic mandate id; cannot be self-issued by the client. }
+    Booking:
+      type: object
+      required: [id, status, start, end, durationMinutes, serviceId, serviceName, staff, version, createdAt]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [confirmed, cancelled] }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        serviceId: { type: string }
+        serviceName: { type: string }
+        locationId: { type: string, description: Server-resolved synthetic venue }
+        scheduleId: { type: string, description: Existing Staff-owned schedule }
+        staff: { $ref: "#/components/schemas/Staff" }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    BookingResponse:
+      type: object
+      properties:
+        apiVersion: { type: string, const: v1 }
+        replayed: { type: boolean }
+        booking: { $ref: "#/components/schemas/Booking" }
+    CancelResponse:
+      type: object
+      properties:
+        apiVersion: { type: string, const: v1 }
+        alreadyCancelled: { type: boolean }
+        booking: { $ref: "#/components/schemas/Booking" }
+    Error:
+      type: object
+      required: [apiVersion, error]
+      properties:
+        apiVersion: { type: string, const: v1 }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [unauthorized, forbidden_scope, forbidden_business, business_not_found, service_not_found, staff_not_found, booking_not_found, invalid_request, range_too_large, idempotency_key_required, confirmation_required, mandate_required, mandate_denied, synthetic_contact_required, slot_unavailable, stale_service, idempotency_conflict, rate_limited, internal_error]
+            message: { type: string }

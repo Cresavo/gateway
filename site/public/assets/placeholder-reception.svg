@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-label="Platshållare för foto">
+  <rect width="800" height="1000" fill="#EAE4DA"/>
+  <rect x="0" y="640" width="800" height="360" fill="#DCD3C5"/>
+  <rect x="0" y="632" width="800" height="12" fill="#CFC4B3"/>
+  <text x="48" y="96" font-family="sans-serif" font-size="30" fill="#58615D">Platshållare / placeholder</text>
+  <text x="48" y="140" font-family="sans-serif" font-size="26" fill="#58615D">Foto: receptionsdisk i en salong, 4:5</text>
+  <text x="48" y="178" font-family="sans-serif" font-size="26" fill="#58615D">Se docs/asset-requests.md</text>
+</svg>
