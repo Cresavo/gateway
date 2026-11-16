@@ -4,6 +4,10 @@
  * Identifiers the server generates are shown as <placeholders>, not invented.
  */
 
+/** Backslash and newline, kept out of source text so the file has no escape sequences. */
+export const BS = String.fromCharCode(92);
+const NL = String.fromCharCode(10);
+
 export type Example = { id: string; label: string; caption: string; code: string };
 
 export const bookingBody = `{
@@ -25,11 +29,11 @@ export const examples: Example[] = [
     id: "rest",
     label: "REST",
     caption: "Create a booking against a local gateway. The key comes from your environment, never the URL.",
-    code: `curl -sS http://127.0.0.1:3218/api/v1/bookings \\
-  -H "Authorization: Bearer $BOOKING_LAB_AGENT_KEY" \\
-  -H "Idempotency-Key: salon-demo-0924-0900" \\
-  -H "Content-Type: application/json" \\
-  -d '${bookingBody.replace(/\n/g, "\n  ")}'`,
+    code: `curl -sS http://127.0.0.1:3218/api/v1/bookings ${BS}
+  -H "Authorization: Bearer $BOOKING_LAB_AGENT_KEY" ${BS}
+  -H "Idempotency-Key: salon-demo-0924-0900" ${BS}
+  -H "Content-Type: application/json" ${BS}
+  -d '${bookingBody.split(NL).join(NL + "  ")}'`,
   },
   {
     id: "mcp",

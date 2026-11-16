@@ -13,7 +13,7 @@ import {
   mcpTools,
   restEndpoints,
 } from "@/lib/content";
-import { examples } from "@/lib/examples";
+import { BS, examples } from "@/lib/examples";
 
 export const metadata: Metadata = {
   title: "Documentation",
@@ -71,7 +71,7 @@ npm run agent:proof
 #   SEPARATE_SALON_AUTHENTICATED_CALENDAR
 #   TWO_TRANSPORTS_ONE_WINNER_ONE_CONTROLLED_CONFLICT`;
 
-const availabilityCmd = `curl -sS "${LOCAL_GATEWAY}/api/v1/availability?business=demo&service=fotvard&date=2026-11-24" \\
+const availabilityCmd = `curl -sS "${LOCAL_GATEWAY}/api/v1/availability?business=demo&service=fotvard&date=2026-11-24" ${BS}
   -H "Authorization: Bearer $BOOKING_LAB_AGENT_KEY"`;
 
 function H2({ id, children }: { id: string; children: React.ReactNode }) {
