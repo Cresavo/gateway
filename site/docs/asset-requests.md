@@ -6,8 +6,8 @@ To regenerate, run the prompt below with the given size, then convert as noted.
 
 | File | Used in | Size | Conversion |
 | --- | --- | --- | --- |
-| `public/assets/still-life.webp` | Final CTA (decorative, `alt=""`) | 1536×1024 | resized to 1100w, webp q55 |
-| `public/assets/customer-phone.webp` | "The customer's side" section, labelled "Illustration" | 1024×1536 | resized to 720w, webp q74 |
+| `public/assets/still-life.webp` | Final CTA (decorative, `alt=""`) | 1536×1024 | resized to 960w, webp q50 |
+| `public/assets/customer-phone.webp` | "The customer's side" section, labelled "Illustration" | 1024×1536 | resized to 640w, webp q70 |
 | `assets/og/backdrop.jpg` | Background of `/opengraph-image` | 1536×1024 | cover-crop to 600×315, jpeg q72 (stretched to 1200×630 in the OG image) |
 
 The phone's screen area is measured at left 34.47%, top 17.64%, width 36.43%, height 52.54% of the image.
