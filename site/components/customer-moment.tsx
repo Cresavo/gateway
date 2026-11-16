@@ -11,7 +11,8 @@ import phone from "@/public/assets/customer-phone.webp";
   The phone is a generated photograph (labelled as an illustration); everything on
   its screen is real UI in code, positioned over the measured screen area
   (34.47% / 17.64% / 36.43% × 52.54% of the image). Text sizes use cqw so the
-  card scales with the screen.
+  card scales with the screen. The card starts at opacity 0 until it scrolls into
+  view, which never happens on paper, so print forces it visible.
 */
 
 const points = [
@@ -93,7 +94,7 @@ function PhoneScreen() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.6 }}
         transition={{ type: "spring", stiffness: 180, damping: 22, delay: 0.15 }}
-        className="mt-[6cqw] overflow-hidden rounded-[5cqw] border-[0.8cqw] border-ok"
+        className="mt-[6cqw] overflow-hidden rounded-[5cqw] border-[0.8cqw] border-ok print:opacity-100! print:transform-none!"
       >
         <div className="flex items-center justify-between gap-[2cqw] bg-ok px-[4cqw] py-[2.4cqw] text-[4.4cqw] font-medium text-ink-2">
           <span className="inline-flex items-center gap-[1.5cqw]">
