@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { isIP } from "node:net";
 // Runtime configuration. The default is loopback-only. Serving beyond loopback
 // needs every one of the explicit flags below; a partial configuration refuses to start.
 
@@ -38,14 +39,30 @@ export function loadConfig(env = process.env) {
   };
 }
 
-// The client address used for rate limiting. With N trusted proxy hops the
+// The client key used for rate limiting. With N trusted proxy hops the
 // address is the Nth entry from the right of X-Forwarded-For; entries further
-// left were written by the client and are ignored.
+// left were written by the client and are ignored. Invalid entries fall back to
+// the socket address. IPv4-mapped IPv6 is unmapped and IPv6 is keyed per /64,
+// so one client cannot mint fresh buckets by rotating addresses in its prefix.
 export function clientAddress(req, hops) {
   const socket = req.socket.remoteAddress ?? "unknown";
-  if (!hops) return socket;
-  const header = req.headers["x-forwarded-for"];
-  if (typeof header !== "string") return socket;
-  const list = header.split(",").map(part => part.trim()).filter(Boolean);
-  return list.length >= hops ? list[list.length - hops] : socket;
+  let address = socket;
+  if (hops) {
+    const header = req.headers["x-forwarded-for"];
+    const list = typeof header === "string" ? header.split(",").map(part => part.trim()).filter(Boolean) : [];
+    const candidate = list.length >= hops ? list[list.length - hops] : undefined;
+    if (candidate && isIP(candidate)) address = candidate;
+  }
+  return normaliseAddress(address);
+}
+
+export function normaliseAddress(address) {
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  if (mapped) return mapped[1];
+  if (isIP(address) !== 6) return address;
+  const [head, tail = ""] = address.toLowerCase().split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const groups = address.includes("::") ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right] : left;
+  return groups.slice(0, 4).map(g => g.replace(/^0+(?=.)/, "")).join(":") + "::/64";
 }

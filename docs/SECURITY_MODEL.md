@@ -71,6 +71,9 @@ Trust boundaries: (1) internet → gateway, (2) gateway → salon, (3) customer 
 - **Why the gateway enforces per-IP limits:** in split mode the salon sees every agent request coming from the gateway's address, so per-IP limits at the salon would apply to all agents together. The gateway applies per-IP limits before any salon call and does not forward client IPs (a client-supplied `x-forwarded-for` is dropped).
 - Proposals have their own bucket because each proposal sends a (simulated) SMS: this caps SMS pumping.
 - Client IP: the socket address on loopback; behind a proxy, the entry `GATEWAY_TRUST_PROXY_HOPS` positions from the right of `X-Forwarded-For`. Entries further left are client-controlled and ignored.
+- MCP requests carry exactly one JSON-RPC message. Batches (JSON arrays) and unparsable bodies get 400 before any limit or salon call. The gateway parses the body once (a leading BOM is removed) and forwards the re-serialised message, so the limiter, the scope check and the MCP handler always see the same call.
+- IPv4-mapped IPv6 addresses are unmapped and IPv6 clients are keyed per /64. An invalid `X-Forwarded-For` entry falls back to the socket address.
+- The counter table is capped at 100 000 live keys. When it is full of live windows, new clients get 429 (fail closed) instead of memory growing.
 - Counters are in memory, per process. Run exactly one gateway instance per provider, or move counters to a shared store before scaling out.
 - Idempotency: booking creation requires `Idempotency-Key`; the salon stores the result. On timeout or 503 the client must retry with the **same** key. Retries count against the gateway's create limit; 5/hour leaves room for normal retries.
 
@@ -103,6 +106,7 @@ Customer-written text (booking notes) is untrusted input for AI tools. The salon
 | Credential leak through redirects | `redirect: "error"`. |
 | Request smuggling of other salon routes | Allow-list of paths and methods; `//`, `\` and `#` refused. |
 | Oversized bodies | 64 KiB limit on gateway and MCP handler. |
+| Rate-limit bypass through JSON-RPC batches or parser differences | One message per request; parsed once and re-serialised before limiting and dispatch. |
 | Prompt injection via customer text | Delimited untrusted field (salon), passed through unchanged (section 6). |
 | Spoofed client IP to dodge limits | Only the trusted proxy hop of `X-Forwarded-For` is used. |
 
@@ -115,6 +119,7 @@ Default is loopback only. Remote mode needs all of these, or the process refuses
 - `GATEWAY_TRUST_PROXY_HOPS` ≥ 1: TLS ends at a proxy the operator controls.
 - `SALON_ORIGIN` over HTTPS.
 - `GATEWAY_LISTEN_HOST` set to `0.0.0.0` or `::` only if the proxy reaches the process over a private network.
+- **The process must be reachable only through the proxy.** If clients can reach the port directly, they can write their own `X-Forwarded-For` and pick their rate-limit key.
 
 What changes in the threat picture:
 
@@ -128,6 +133,6 @@ What changes in the threat picture:
 
 1. OAuth 2.1 (PKCE, 15-minute tokens, rotating refresh tokens) is not yet the salon's agent auth; v1 uses provider-issued demo keys.
 2. Single service token; zero-downtime rotation needs the salon to accept two.
-3. Rate-limit counters are per process.
+3. Rate-limit counters are per process. The gateway does not verify that the peer is the proxy; that relies on network isolation (an allow-list of proxy addresses is a possible addition).
 4. Proposal and consent routes are implemented but not yet in `openapi.yaml`.
 5. The end-to-end run in this repository uses a fictional fixture provider. A run against a real Cresavo provider in split mode is still needed (see `docs/E2E.md`).

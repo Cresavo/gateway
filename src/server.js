@@ -6,7 +6,7 @@ import { mcpResponse } from "./mcp.js";
 import { nativeMcpSchema } from "./mcp-inputs.js";
 import { uspProfile, llmsText } from "./discovery.js";
 import { allowedRoute, connectProvider, errorReply } from "./provider.js";
-import { classify, defaultLimits, rateLimiter } from "./limits.js";
+import { classify, defaultLimits, parseMcpBody, rateLimiter } from "./limits.js";
 import { clientAddress, loadConfig } from "./config.js";
 
 // options.publicOrigin: the https origin clients use (remote mode only).
@@ -58,8 +58,16 @@ export function gateway(salon, serviceToken, options = {}) {
         if (size > 65536) return await send(errorReply(413, "request_too_large", "Request too large."));
         chunks.push(chunk);
       }
-      const body = chunks.length ? Buffer.concat(chunks) : undefined;
-      const verdict = take(ip, classify(req.method, url.pathname, body));
+      let body = chunks.length ? Buffer.concat(chunks) : undefined;
+      let rpc;
+      if (mcp && req.method === "POST") {
+        // One JSON-RPC message per request (MCP has no batching since 2025-06-18).
+        // Parse once and forward exactly what was rate limited and scope checked.
+        rpc = parseMcpBody(body);
+        if (!rpc) return await send(errorReply(400, "invalid_request", "Send one JSON-RPC message per request."));
+        body = Buffer.from(JSON.stringify(rpc));
+      }
+      const verdict = take(ip, classify(req.method, url.pathname, rpc));
       if (!verdict.ok) return await send(limited(verdict.retryAfter));
       const headers = new Headers();
       for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);

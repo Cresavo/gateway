@@ -34,6 +34,8 @@ All flags are explicit. Without them the gateway binds to `127.0.0.1` and refuse
 | `GATEWAY_PUBLIC_ORIGIN` | must be unset | `https://<gateway domain>` |
 | `GATEWAY_TRUST_PROXY_HOPS` | must be unset or `0` | `1` for one proxy in front |
 
+Locally, use `127.0.0.1`, not `localhost`: the Host check accepts only the exact origin.
+
 The process refuses to start on a partial remote setup (for example a public bind without `GATEWAY_PUBLIC_ORIGIN`, or HTTP salon origin in remote mode). See `src/config.js` and `test/hosting.test.js`.
 
 ## Container
@@ -55,7 +57,7 @@ docker run --rm -p 3218:3218 \
 
 1. HTTPS only, HTTP redirected to HTTPS by the host.
 2. Instance count pinned to 1; no autoscaling.
-3. The proxy forwards the original `Host` header and appends exactly one `X-Forwarded-For` entry.
+3. The proxy forwards the original `Host` header (lowercase, no trailing dot) and appends exactly one `X-Forwarded-For` entry. The container port is reachable only by the proxy, never published to the internet.
 4. Request logging without headers and bodies.
 5. The service token stored in the host's secret store, distinct from every other environment.
 6. A per-IP connection or request limit at the proxy, if the host offers one, as an extra layer.
