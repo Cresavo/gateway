@@ -53,13 +53,21 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
     assert.ok(receipt.proposalId === proposal.id && receipt.customerSubject === "separate-lab-customer-v1");
     assert.ok(url.origin === salon && url.pathname === "/consent/" + proposal.id && url.hash.length === 44);
     const page = await browser.newPage();
+    page.setDefaultTimeout(15000);
     try {
       const viewResponse = page.waitForResponse(r => r.url() === salon + url.pathname + "/decision" && r.request().method() === "POST");
       await page.goto(url.href);
       const response = await viewResponse;
       if (expired) {
         assert.equal(response.status(), 403);
-        assert.deepEqual(await response.json(), { error: "consent_denied" });
+        // The UI discards unsuccessful response bodies. Verify the wire body
+        // independently through the customer endpoint with the same expired link.
+        const denied = await page.request.post(salon + url.pathname + "/decision", {
+          headers: { origin: salon }, data: { decision: "view", token: url.hash.slice(1) },
+          maxRedirects: 0, timeout: 10000,
+        });
+        assert.equal(denied.status(), 403);
+        assert.deepEqual(await denied.json(), { error: "consent_denied" });
         await page.getByText("Länken är ogiltig, använd eller utgången.", { exact: true }).waitFor();
         assert.equal(await page.getByRole("button", { name: "Ja, godkänn denna bokning" }).count(), 0);
         return;
