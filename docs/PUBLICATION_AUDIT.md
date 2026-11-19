@@ -3,7 +3,7 @@
 Audit of the full Git history before the repository becomes public as `Cresavo/gateway`.
 
 - Date: 2026-11-19
-- Scope: all refs (`git rev-list --all`): 4 commits on `main`, no tags, no stashes, no other branches.
+- Original manual review scope: refs available in the initial checkout only (`git rev-list --all`): 4 commits on `main`, no tags, no stashes, no other branches.
 - Commits audited: `8a018b6`, `a239275`, `b37d414`, `e1830fe`.
 
 ## Method
@@ -11,7 +11,7 @@ Audit of the full Git history before the repository becomes public as `Cresavo/g
 | Check | Tool | Result |
 | --- | --- | --- |
 | Secret patterns over every patch in history | `git log --all -p` with regular expressions for private keys, cloud keys, GitHub/Slack/LLM tokens, JWTs, 40+ character hex and base64 runs | No secrets. The only long hex value is the upstream source commit ID in the README. |
-| Gitleaks, full history | `gitleaks git --log-opts=--all` | **Not run in this session**: downloading the binary was blocked. CI runs it on every push with full history (`fetch-depth: 0`), see `.github/workflows/ci.yml`. The first CI run on the pull request is the authoritative gitleaks result. |
+| Gitleaks, full history | `gitleaks git --log-opts=--all` | Rechecked in a full clone with all fetched branches on 2026-11-20. Gitleaks 8.28.0 (release SHA-256 verified) reported no leaks across 26 commits before the parity update. The CI job repeats the redacted full-history scan. |
 | Files ever committed | `git log --all --name-only` | 15 files, all still present. No deleted files, `.env` files, dumps or binaries in history. |
 | Author and committer identities | `git log --format='%an %ae %cn %ce'` | `Codex <codex@example.test>` and `Codex <codex@users.noreply.github.com>`. No personal email addresses. |
 | URLs | every URL in history | loopback, `example.test`, npm registry, usp-protocol.dev, GNU/FSF license links, and the private repository URL below. |
@@ -28,4 +28,4 @@ Audit of the full Git history before the repository becomes public as `Cresavo/g
 
 ## Conclusion
 
-No secrets and no personal data found in history. **No history rewrite is needed**, and none was done. The gitleaks CI job must pass on the pull request before the repository is made public. If it reports a finding, stop and decide with the owner before any rewrite.
+The original manual review covered four commits. The later full-ref secret scan also covered the other branches. It did not repeat the original personal-data review across those branches. The gitleaks CI job must pass on the pull request before the repository is made public. If it reports a finding, stop and decide with the owner before any rewrite.

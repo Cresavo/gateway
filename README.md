@@ -26,7 +26,8 @@ Needs Node 24 and a Cresavo provider running in split mode (see `docs/GATEWAY_SP
 ```sh
 npm ci
 npm test            # unit tests
-npm run test:e2e    # full path with a fictional provider, see docs/E2E.md
+npm run test:e2e    # in-memory separate-channel fixture
+npm run test:e2e:real # pinned split salon with local PostgreSQL and Chromium
 ```
 
 Run against a local provider. Generate a 32-byte random token, give the same value to both processes, and keep it out of Git, URLs and logs:

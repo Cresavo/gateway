@@ -1,193 +1,178 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// A fictional, in-memory split-mode salon provider used only by the end-to-end
-// harness. It models the agent flow described for the Cresavo provider
-// (proposal -> consent page with a simulated SMS code -> mandate locked by a
-// hash over service, staff, time, duration and price -> re-check at booking).
-// It is NOT the Cresavo implementation and does not prove compatibility with it:
-// the wire shapes of the proposal and consent steps are this fixture's
-// assumptions. Run the same harness against a real Cresavo provider with
-// E2E_SALON_ORIGIN (see docs/E2E.md) to verify the real contract.
-import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+// Single-client, in-memory double of the native provider's separate-lab profile.
+import assert from "node:assert/strict";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { once } from "node:events";
 import { createServer } from "node:http";
+import { z } from "zod";
+import { proposalSchema } from "../../src/mcp-inputs.js";
 
-const BUSINESS = { id: "demo", name: "Salong Eko (fictional)", timeZone: "Europe/Stockholm", locationId: "demo-location" };
-const STAFF = { id: "staff-alva", name: "Alva Exempel (fictional)" };
-const DAY = "2027-03-02";
-const STARTS = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00"].map(t => `${DAY}T${t}:00+01:00`);
-const PROPOSAL_TTL_MS = 10 * 60_000;
-const MANDATE_TTL_MS = 15 * 60_000;
-
-const id = () => randomBytes(16).toString("base64url");
-const equal = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
-
-export function fixtureProvider({ serviceToken, agentKey, ownerToken }) {
-  let clock = Date.parse("2027-03-01T12:00:00+01:00");
-  const services = new Map([["klippning", {
-    id: "klippning", name: "Klippning", durationMinutes: 45, bufferMinutes: 15,
-    price: { amountMinor: 45000, currency: "SEK" }, version: 1, staff: [STAFF],
-  }]]);
-  const proposals = new Map();
-  const mandates = new Map();
-  const bookings = new Map();
-  const idempotency = new Map();
-  const sms = new Map();
-  const taken = new Set();
-  const stats = { proposalsCreated: 0, bookingAttempts: 0 };
-
-  const json = (res, status, body) => {
-    res.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
-    res.end(JSON.stringify({ apiVersion: "v1", ...body }));
-  };
-  const fail = (res, status, code, message) => json(res, status, { error: { code, message } });
-  const terms = (service, staffId, start) => ({
-    serviceId: service.id, serviceVersion: service.version, staffId, start,
-    durationMinutes: service.durationMinutes, priceMinor: service.price.amountMinor,
-  });
-  const termsHash = t => createHash("sha256")
-    .update([t.serviceId, t.staffId, t.start, t.durationMinutes, t.priceMinor].join("|")).digest("hex");
-  const slotKey = (staffId, start) => staffId + "@" + start;
-  const publicProposal = p => ({
-    id: p.id, status: p.status, consentUrl: p.consentUrl, expiresAt: new Date(p.expiresAt).toISOString(),
-    terms: p.terms, ...(p.mandateId ? { mandateId: p.mandateId } : {}),
-  });
-
-  async function readBody(req) {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    return Buffer.concat(chunks).toString("utf8");
-  }
-
-  function agentAuthorised(req) {
-    const gatewayToken = req.headers["x-booking-gateway-token"];
-    const auth = req.headers.authorization ?? "";
-    return typeof gatewayToken === "string" && equal(gatewayToken, serviceToken) && equal(auth, "Bearer " + agentKey);
-  }
-
+const business = { id: "demo", name: "Salong Eko (synthetic demo)", timeZone: "Europe/Stockholm", locationId: "demo-location" };
+const staff = { id: "staff-demo", name: "Anna" };
+const place = { locationId: business.locationId, scheduleId: "staff-schedule:" + staff.id };
+const customer = { name: "Separat Demokund", email: "separate-customer@example.test" };
+const scopes = ["services:read", "availability:read", "bookings:read", "bookings:write"];
+const bookingSchema = proposalSchema.omit({ customerPhone: true }).extend({
+  confirmed: z.boolean(), mandateId: z.string().trim().min(1).max(128).optional(),
+  customer: z.object({ name: z.string().trim().min(2).max(80), email: z.email().max(254) }).strict(),
+});
+const errors = {
+  unauthorized: [401, "A valid API key is required."],
+  invalid_request: [400, "Check the request parameters."],
+  forbidden_business: [403, "This API key is not authorised for that business."],
+  service_not_found: [404, "Service not found."],
+  staff_not_found: [404, "Staff member not found for this service."],
+  stale_service: [409, "The service has changed. Fetch services again and resend serviceVersion."],
+  booking_not_found: [404, "Booking not found."],
+  slot_unavailable: [409, "That time is no longer available. Fetch availability again."],
+  mandate_denied: [403, "The booking is outside the authorised mandate."],
+  mandate_required: [400, "A server-issued synthetic booking mandate is required."],
+  confirmation_required: [400, "Set confirmed: true only after the person has approved this exact booking."],
+  idempotency_key_required: [400, "Send an Idempotency-Key header (1-64 characters A-Z a-z 0-9 _ -)."],
+  idempotency_conflict: [409, "This Idempotency-Key was already used with different booking details."],
+  synthetic_contact_required: [400, "The sandbox only accepts synthetic customer emails ending in @example.test."],
+};
+const json = (res, status, data) => {
+  res.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
+  res.end(JSON.stringify(data));
+};
+async function read(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return JSON.parse(Buffer.concat(chunks).toString());
+}
+export async function start({ serviceToken, day }) {
+  const clientId = randomUUID(), agentKey = "blk_" + randomBytes(6).toString("hex") + "_" + randomBytes(32).toString("base64url");
+  const service = { id: "massage", name: "Massage", durationMinutes: 30, bufferMinutes: 0,
+    price: { amountMinor: 45000, currency: "SEK" }, version: 1, staff: [staff] };
+  const offset = new Intl.DateTimeFormat("en", { timeZone: business.timeZone, timeZoneName: "longOffset" })
+    .formatToParts(new Date(day + "T12:00:00Z")).find(p => p.type === "timeZoneName").value.slice(3);
+  const starts = [9, 10, 11, 13, 14, 15].map(h => day + "T" + String(h).padStart(2, "0") + ":00:00" + offset);
+  const local = ms => new Date(ms + Number(offset.slice(0, 3)) * 3600000).toISOString().slice(0, 19) + offset;
+  const proposals = new Map(), bookings = new Map(), mandates = new Map(), retries = new Map(), taken = new Set();
+  const hash = p => createHash("sha256").update(JSON.stringify(["booking-proposal-v1", business.id, clientId,
+    p.serviceId, p.staff.id, p.locationId, p.scheduleId, p.start, p.durationMinutes, p.price.amountMinor, "SEK"])).digest("hex");
+  const snapshot = start => ({ serviceId: service.id, serviceVersion: service.version, serviceName: service.name, staff,
+    ...place, salon: "Salong Eko (syntetisk demo)", start: new Date(start).toISOString(),
+    durationMinutes: service.durationMinutes, price: { ...service.price } });
+  const view = p => p.status === "pending" && Date.parse(p.expiresAt) <= Date.now() ? { ...p, status: "expired" } : p;
   const server = createServer(async (req, res) => {
+    const url = new URL(req.url, "http://fixture.invalid");
+    const path = url.pathname;
+    const ok = (body, status = 200) => json(res, status, body);
+    const fail = code => {
+      const [status, message] = errors[code];
+      json(res, status, { apiVersion: "v1", error: { code, message } });
+    };
+    const consent = path.match(/^\/consent\/([\w-]+)\/decision$/);
     try {
-      const url = new URL(req.url, "http://fixture.invalid");
-      const path = url.pathname;
-
-      // Fixture controls: stand-ins for the salon owner, the customer's phone and the clock.
-      if (path.startsWith("/__fixture/")) {
-        if (!equal(String(req.headers["x-fixture-owner"] ?? ""), ownerToken)) return fail(res, 401, "unauthorized", "Owner only.");
-        const body = req.method === "POST" ? JSON.parse(await readBody(req) || "{}") : {};
-        if (path.startsWith("/__fixture/sms/")) {
-          const code = sms.get(path.slice("/__fixture/sms/".length));
-          return code ? json(res, 200, { code }) : fail(res, 404, "not_found", "No message.");
-        }
-        if (path === "/__fixture/calendar")
-          return json(res, 200, { bookings: [...bookings.values()].filter(b => b.status === "confirmed") });
-        if (path === "/__fixture/price") {
-          const service = services.get(body.serviceId);
-          service.price = { ...service.price, amountMinor: body.amountMinor };
-          return json(res, 200, { service });
-        }
-        if (path === "/__fixture/clock") { clock += body.advanceMs; return json(res, 200, { now: new Date(clock).toISOString() }); }
-        if (path === "/__fixture/occupy") { taken.add(slotKey(body.staffId, body.start)); return json(res, 200, {}); }
-        if (path === "/__fixture/stats") return json(res, 200, { stats });
-        return fail(res, 404, "not_found", "Unknown fixture control.");
-      }
-
-      // Consent page: the customer's own browser, never the agent or the gateway.
-      const consent = path.match(/^\/consent\/([\w-]{1,128})$/);
       if (consent) {
-        const proposal = proposals.get(consent[1]);
-        if (!proposal) return fail(res, 404, "not_found", "Unknown proposal.");
-        if (req.method === "GET") {
-          res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-          return res.end(`<!doctype html><title>Confirm booking</title><form method="post">` +
-            `<p>Klippning ${proposal.terms.start}, ${proposal.terms.priceMinor / 100} SEK</p>` +
-            `<label>SMS code <input name="code"></label><button>Approve</button></form>`);
+        const entry = proposals.get(consent[1]);
+        const input = await read(req);
+        const deny = () => ok({ error: "consent_denied" }, 403);
+        if (req.method !== "POST" || req.headers.origin !== salon || req.headers.authorization || req.headers["x-api-key"] ||
+          !req.headers["content-type"]?.startsWith("application/json") || !entry || input.token !== entry.token ||
+          view(entry.proposal).status !== "pending") return deny();
+        const p = entry.proposal;
+        if (input.decision === "view") return ok({ proposal: p, proposalHash: hash(p), customer: customer.name + " · " + customer.email });
+        if (input.proposalHash !== hash(p) || !["yes", "no"].includes(input.decision)) return deny();
+        p.status = input.decision === "yes" ? "approved" : "declined";
+        if (p.status === "approved") {
+          p.mandateId = randomUUID();
+          mandates.set(p.mandateId, { hash: hash(p), expiresAt: Date.parse(p.expiresAt), used: false });
         }
-        const code = new URLSearchParams(await readBody(req)).get("code") ?? "";
-        if (proposal.expiresAt <= clock) return fail(res, 410, "proposal_expired", "Proposal expired.");
-        if (!equal(code, sms.get(proposal.id) ?? "")) return fail(res, 403, "consent_code_invalid", "Wrong code.");
-        const mandate = { id: "mdt_" + id(), hash: termsHash(proposal.terms), expiresAt: clock + MANDATE_TTL_MS, used: false };
-        mandates.set(mandate.id, mandate);
-        proposal.status = "approved";
-        proposal.mandateId = mandate.id;
-        return json(res, 200, { proposal: publicProposal(proposal) });
+        return ok({ status: p.status });
       }
-
-      if (!agentAuthorised(req)) return fail(res, 401, "unauthorized", "Agent credential and gateway token required.");
-      if (req.method === "GET" && path === "/api/v1/access")
-        return json(res, 200, { providerMode: "split", scopes: ["services:read", "availability:read", "bookings:read", "bookings:write"] });
-
-      if (req.method === "GET" && path === "/api/v1/services")
-        return json(res, 200, { business: BUSINESS, services: [...services.values()] });
-
-      if (req.method === "GET" && path === "/api/v1/availability") {
-        const service = services.get(url.searchParams.get("service") ?? "");
-        if (!service) return fail(res, 404, "service_not_found", "Service not found.");
-        const slots = STARTS.filter(start => !taken.has(slotKey(STAFF.id, start))).map(start => ({
-          start, end: new Date(Date.parse(start) + service.durationMinutes * 60_000).toISOString(),
-          durationMinutes: service.durationMinutes, serviceId: service.id, serviceVersion: service.version, staff: STAFF,
-        }));
-        return json(res, 200, { business: BUSINESS, service, range: { from: DAY, to: DAY, timeZone: BUSINESS.timeZone }, slots });
+      res.setHeader("x-booking-lab-api", "v1");
+      const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+      const key = req.headers["x-api-key"];
+      if (req.headers["x-booking-gateway-token"] !== serviceToken || (bearer ?? key) !== agentKey || (key && key !== agentKey))
+        return fail("unauthorized");
+      if (req.method === "GET") {
+        if (path === "/api/v1/access") return ok({ apiVersion: "v1", providerMode: "split", scopes });
+        if (path.startsWith("/api/v1/proposals/")) {
+          const entry = proposals.get(path.split("/").pop());
+          return entry ? ok({ proposal: view(entry.proposal) }) : fail("booking_not_found");
+        }
+        if (path.startsWith("/api/v1/bookings/")) {
+          const booking = bookings.get(path.split("/").pop());
+          return booking ? ok({ apiVersion: "v1", booking }) : fail("booking_not_found");
+        }
+        if (!url.searchParams.get("business")) return fail("invalid_request");
+        if (url.searchParams.get("business") !== business.id) return fail("forbidden_business");
+        if (path === "/api/v1/services") return ok({ apiVersion: "v1", business, services: [service] });
+        if (path !== "/api/v1/availability") return fail("invalid_request");
+        if (!url.searchParams.get("service")) return fail("invalid_request");
+        if (url.searchParams.get("service") !== service.id) return fail("service_not_found");
+        if (url.searchParams.get("staff") && url.searchParams.get("staff") !== staff.id) return fail("staff_not_found");
+        const date = url.searchParams.get("date");
+        if (!date) return fail("invalid_request");
+        const slots = starts.filter(s => date === day && !taken.has(Date.parse(s))).map(start => ({ start,
+          end: local(Date.parse(start) + service.durationMinutes * 60000), durationMinutes: service.durationMinutes,
+          serviceId: service.id, serviceVersion: service.version, staff, ...place }));
+        return ok({ apiVersion: "v1", business, service, range: { from: date, to: date, timeZone: business.timeZone }, slots });
       }
-
-      if (req.method === "POST" && path === "/api/v1/proposals") {
-        const input = JSON.parse(await readBody(req));
-        const service = services.get(input.serviceId);
-        if (!service || input.serviceVersion !== service.version) return fail(res, 409, "stale_service", "Service changed.");
-        if (!STARTS.includes(input.start) || taken.has(slotKey(input.staffId, input.start)))
-          return fail(res, 409, "slot_unavailable", "Slot unavailable.");
-        stats.proposalsCreated++;
-        const proposal = { id: "prp_" + id(), status: "pending_consent", expiresAt: clock + PROPOSAL_TTL_MS,
-          terms: terms(service, input.staffId, input.start) };
-        proposal.consentUrl = `http://${req.headers.host}/consent/${proposal.id}`;
-        proposals.set(proposal.id, proposal);
-        sms.set(proposal.id, String(randomInt(100000, 1000000)));
-        return json(res, 201, { proposal: publicProposal(proposal) });
+      const proposal = path === "/api/v1/proposals";
+      if (req.method !== "POST" || (!proposal && path !== "/api/v1/bookings")) return fail("invalid_request");
+      const data = (proposal ? proposalSchema : bookingSchema).safeParse(await read(req));
+      if (!data.success) return fail("invalid_request");
+      const p = data.data;
+      if (p.business !== business.id) return fail("forbidden_business");
+      if (p.serviceId !== service.id) return fail("service_not_found");
+      if (p.serviceVersion !== service.version) return fail("stale_service");
+      if (p.staffId !== staff.id) return fail("staff_not_found");
+      const at = Date.parse(p.start), terms = snapshot(p.start);
+      if (!("confirmed" in p)) {
+        if ("customerPhone" in p || at <= Date.now()) return fail("invalid_request");
+        const id = randomUUID();
+        const row = { id, status: "pending", ...terms, expiresAt: new Date(Math.min(at, Date.now() + 600000)).toISOString() };
+        proposals.set(id, { token: randomBytes(32).toString("base64url"), proposal: row });
+        return ok({ proposal: row, approvalRequired: true, approvalDelivery: "separate-synthetic-customer" }, 201);
       }
-
-      const readProposal = path.match(/^\/api\/v1\/proposals\/([\w-]{1,128})$/);
-      if (req.method === "GET" && readProposal) {
-        const proposal = proposals.get(readProposal[1]);
-        return proposal ? json(res, 200, { proposal: publicProposal(proposal) }) : fail(res, 404, "not_found", "Unknown proposal.");
-      }
-
-      if (req.method === "POST" && path === "/api/v1/bookings") {
-        stats.bookingAttempts++;
-        const key = req.headers["idempotency-key"];
-        if (typeof key !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(key))
-          return fail(res, 400, "idempotency_key_required", "Idempotency-Key required.");
-        const raw = await readBody(req);
-        const previous = idempotency.get(key);
-        if (previous) return previous.raw === raw ? json(res, 200, { replayed: true, booking: bookings.get(previous.bookingId) })
-          : fail(res, 409, "idempotency_conflict", "Key reused with another payload.");
-        const input = JSON.parse(raw);
-        if (input.confirmed !== true) return fail(res, 400, "confirmation_required", "Explicit confirmation required.");
-        const mandate = mandates.get(input.mandateId ?? "");
-        if (!mandate) return fail(res, 403, "mandate_required", "A customer-approved mandate is required.");
-        const service = services.get(input.serviceId);
-        if (!service) return fail(res, 404, "service_not_found", "Service not found.");
-        // Re-check at the point of use: the current terms must hash to what the customer approved.
-        if (mandate.used || mandate.expiresAt <= clock || termsHash(terms(service, input.staffId, input.start)) !== mandate.hash)
-          return fail(res, 403, "mandate_denied", "Mandate expired, used, or terms changed since approval.");
-        if (taken.has(slotKey(input.staffId, input.start))) return fail(res, 409, "slot_unavailable", "Slot unavailable.");
-        if (!input.customer?.email?.endsWith("@example.test")) return fail(res, 400, "synthetic_contact_required", "Fictional contacts only.");
-        mandate.used = true;
-        taken.add(slotKey(input.staffId, input.start));
-        const booking = { id: "bkg_" + id(), status: "confirmed", start: input.start,
-          end: new Date(Date.parse(input.start) + service.durationMinutes * 60_000).toISOString(),
-          durationMinutes: service.durationMinutes, serviceId: service.id, serviceName: service.name, staff: STAFF,
-          version: service.version, createdAt: new Date(clock).toISOString() };
-        bookings.set(booking.id, booking);
-        idempotency.set(key, { raw, bookingId: booking.id });
-        return json(res, 201, { replayed: false, booking });
-      }
-
-      const readBooking = path.match(/^\/api\/v1\/bookings\/([\w-]{1,128})$/);
-      if (req.method === "GET" && readBooking) {
-        const booking = bookings.get(readBooking[1]);
-        return booking ? json(res, 200, { booking }) : fail(res, 404, "booking_not_found", "Unknown booking.");
-      }
-      return fail(res, 404, "not_found", "Unknown operation.");
-    } catch {
-      if (!res.headersSent) fail(res, 500, "internal_error", "Fixture failure.");
-    }
+      const idempotencyKey = req.headers["idempotency-key"];
+      if (typeof idempotencyKey !== "string" || !/^[\w-]{1,64}$/.test(idempotencyKey)) return fail("idempotency_key_required");
+      if (!p.confirmed) return fail("confirmation_required");
+      if (!p.customer.email.toLowerCase().endsWith("@example.test")) return fail("synthetic_contact_required");
+      if (!p.mandateId) return fail("mandate_required");
+      const previous = retries.get(idempotencyKey);
+      if (previous) return previous.request === JSON.stringify(p) ? ok({ apiVersion: "v1", booking: previous.booking, replayed: true }) : fail("idempotency_conflict");
+      const m = mandates.get(p.mandateId);
+      if (!m || m.used || m.hash !== hash(terms) || m.expiresAt <= Date.now() ||
+          p.customer.name !== customer.name || p.customer.email !== customer.email) return fail("mandate_denied");
+      if (taken.has(at) || !starts.some(s => Date.parse(s) === at)) return fail("slot_unavailable");
+      const booking = { id: randomUUID(), status: "confirmed", start: local(at), end: local(at + service.durationMinutes * 60000),
+        durationMinutes: service.durationMinutes, serviceId: service.id, serviceName: service.name, staff, ...place, version: 1,
+        createdAt: local(Date.now()) };
+      bookings.set(booking.id, booking);
+      retries.set(idempotencyKey, { request: JSON.stringify(p), booking });
+      m.used = true;
+      taken.add(at);
+      return ok({ apiVersion: "v1", booking, replayed: false }, 201);
+    } catch { return consent ? ok({ error: "consent_denied" }, 403) : fail("invalid_request"); }
   });
-  return { server, stats };
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const salon = "http://127.0.0.1:" + /** @type {import("node:net").AddressInfo} */ (server.address()).port;
+  async function approve(p) {
+    const decision = body => fetch(salon + "/consent/" + p.id + "/decision", { method: "POST", redirect: "error",
+      headers: { origin: salon, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const { token } = proposals.get(p.id);
+    const viewed = await decision({ token, decision: "view" });
+    assert.equal(viewed.status, 200);
+    const { proposalHash } = await viewed.json();
+    const approved = await decision({ token, decision: "yes", proposalHash });
+    assert.equal(approved.status, 200);
+    assert.equal((await approved.json()).status, "approved");
+  }
+  async function owner(action, input = {}) {
+    switch (action) {
+      case "stats": return { stats: { proposalsCreated: proposals.size, bookingsCreated: bookings.size } };
+      case "calendar": return { bookings: [...bookings.values()] };
+      case "occupy": taken.add(Date.parse(input.start)); return;
+      case "expire": mandates.get(input.mandateId).expiresAt = Date.now() - 1000; return;
+      case "price": service.price.amountMinor = input.amountMinor; return;
+      default: throw new Error("Unknown test action");
+    }
+  }
+  return { salon, agentKey, approve, owner, close: async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } };
 }

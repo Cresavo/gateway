@@ -16,9 +16,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Threat model, hosting plan, publication audit, contributing guide, security policy, issue templates.
 - CI: lint, typecheck, unit and end-to-end tests, full-history secret scan, dependency audit, actions pinned by SHA.
 
+- `npm run test:e2e:real` exercises the shared SDK scenarios against a pinned Cresavo salon, PostgreSQL and authenticated Chromium calendar. The tested approval profile is `separate-lab`.
+
 ### Changed
 
 - npm package name `booking-lab-gateway` → `cresavo-gateway` (not published to npm; no runtime effect).
+- The published OpenAPI includes both proposal operations. The fixture now uses `pending` in place of `pending_consent`, flat proposal fields in place of `proposal.terms`, and `proposal.price.amountMinor` in place of `proposal.terms.priceMinor`. The former fixture-only `proposal.consentUrl` is removed. Legacy Cresavo uses top-level `approvalUrl`; separate delivery returns `approvalRequired` and `approvalDelivery`. Consent decisions use JSON at `/consent/{id}/decision` in place of the fixture's form POST at `/consent/{id}`.
+- The proposal read uses `booking_not_found` in place of the fixture's `not_found`. The customer decision route uses `consent_denied` in place of `proposal_expired` and `consent_code_invalid`. Missing mandates return 400 `mandate_required`. Unknown mandates return 403 `mandate_denied`. Customer and operator test controls are local adapter functions.
+- A single MCP request shares its access check. Provider 5xx responses return static 503 `provider_unavailable`. Malformed successful operation replies return 502. MCP tool errors carry `{error}`. Direct cancellation via either transport returns a denial until the provider supports approved cancellation proposals.
 - README rewritten for public use and points at `Cresavo/cresavo`.
 
 ### Unchanged on purpose

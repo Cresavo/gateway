@@ -5,7 +5,7 @@ import globals from "globals";
 export default [
   js.configs.recommended,
   {
-    files: ["**/*.js"],
+    files: ["**/*.{js,mjs}"],
     languageOptions: { ecmaVersion: 2024, sourceType: "module", globals: globals.node },
     rules: { "no-unused-vars": ["error", { argsIgnorePattern: "^_" }] },
   },
