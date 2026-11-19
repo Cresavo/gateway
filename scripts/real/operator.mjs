@@ -45,7 +45,7 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
     browser = await chromium.launch();
   } catch (error) { await close(); throw error; }
 
-  async function approve(proposal) {
+  async function approve(proposal, expired = false) {
     const path = join(inbox, proposal.id + ".json");
     const receipt = JSON.parse(await readFile(path, "utf8"));
     await unlink(path);
@@ -54,7 +54,17 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
     assert.ok(url.origin === salon && url.pathname === "/consent/" + proposal.id && url.hash.length === 44);
     const page = await browser.newPage();
     try {
+      const viewResponse = page.waitForResponse(r => r.url() === salon + url.pathname + "/decision" && r.request().method() === "POST");
       await page.goto(url.href);
+      const response = await viewResponse;
+      if (expired) {
+        assert.equal(response.status(), 403);
+        assert.deepEqual(await response.json(), { error: "consent_denied" });
+        await page.getByText("Länken är ogiltig, använd eller utgången.", { exact: true }).waitFor();
+        assert.equal(await page.getByRole("button", { name: "Ja, godkänn denna bokning" }).count(), 0);
+        return;
+      }
+      assert.equal(response.status(), 200);
       await page.getByRole("button", { name: "Ja, godkänn denna bokning", exact: true }).click();
       await page.getByText("Godkänt. Agenten kan nu slutföra exakt denna bokning.", { exact: false }).waitFor();
       assert.ok(!new URL(page.url()).hash);
@@ -66,6 +76,9 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
       case "calendar":
         await checkSalonCalendar(salon, new URL(gatewayOrigin), input.bookingId, input.start, agent.key);
         return { bookings: await db.booking.findMany({ where: { businessId: "demo", id: input.bookingId }, select: { id: true } }) };
+      case "expireProposal":
+        await db.agentProposal.update({ where: { id: input.proposalId, clientId }, data: { expiresAt: new Date(Date.now() - 1000) } });
+        return;
       case "expire":
         await db.agentMandate.update({ where: { id: input.mandateId, clientId }, data: { expiresAt: new Date(Date.now() - 1000) } });
         return;

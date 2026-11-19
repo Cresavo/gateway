@@ -149,9 +149,10 @@ async function run() {
       assert.equal(result.body.error.code, "slot_unavailable");
     });
 
+    let lastProposal;
     await scenario("rate limit hit: the sixth proposal in an hour gets 429 with Retry-After and never reaches the salon", async () => {
       const starts = await freeStarts();
-      await propose(starts[0]); // fifth proposal from this IP in the window
+      lastProposal = await propose(starts[0]); // fifth proposal from this IP in the window
       const before = (await owner("stats")).stats.proposalsCreated;
       const rpc = { jsonrpc: "2.0", id: 99, method: "tools/call", params: { name: "create_proposal", arguments: {
         business: "demo", serviceId: service.id, serviceVersion: service.version, staffId: service.staff[0].id, start: starts[1] } } };
@@ -165,6 +166,15 @@ async function run() {
       assert.equal((await owner("stats")).stats.proposalsCreated, before, "salon saw no extra proposal");
     });
 
+    await scenario("expired pending consent: customer is denied and no mandate is issued", async () => {
+      await owner("expireProposal", { proposalId: lastProposal.id });
+      await approve(lastProposal, true);
+      const result = await call("get_proposal", { proposalId: lastProposal.id });
+      assert.equal(result.isError, false);
+      assert.equal(result.body.proposal.status, "expired");
+      assert.ok(!("mandateId" in result.body.proposal));
+      assert.equal((await owner("stats")).stats.bookingsCreated, 1);
+    });
   } finally {
     await client.close().catch(() => {});
     child.kill();

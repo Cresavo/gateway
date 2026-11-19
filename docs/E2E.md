@@ -1,6 +1,6 @@
 # End-to-end tests
 
-Both commands run the five scenarios in `scripts/e2e.js` through the MCP SDK and a separate gateway process. Only the provider startup, owner controls and customer approval adapter change.
+Both commands run the same scenarios in `scripts/e2e.js` through the MCP SDK and a separate gateway process. Only the provider startup, owner controls and customer approval adapter change.
 
 ```sh
 npm ci
@@ -17,7 +17,7 @@ Locally the runner starts a private loopback PostgreSQL cluster with a random pa
 | Scenario | Evidence |
 | --- | --- |
 | Proposal and booking | The agent gets a pending proposal without customer credentials. Approval on the salon creates a mandate. MCP creates a booking, replays it with the original key, and reads it back. In the real run an independent owner session opens the exact ID from the authenticated calendar in Chromium. |
-| Expiry | The operator expires the approved mandate in the disposable database. A fresh booking attempt receives `mandate_denied`. |
+| Expiry | The operator expires the approved mandate in the disposable database. A fresh booking attempt receives `mandate_denied`. A separate check expires a pending proposal, opens the customer link and verifies 403, expired status and absence of a mandate. |
 | Price change | The operator lowers the current price while keeping the service version fixed. The price still fits the cap, so refusal exercises the exact approved terms. An ordinary version change would instead return `stale_service`. |
 | Slot taken | Another fictional visitor books the approved start through the salon domain. The agent receives `slot_unavailable`. |
 | Rate limit | The first five proposals reach the salon. The sixth receives HTTP 429 with a positive `Retry-After`. The SDK also observes the refusal and the salon's proposal count stays unchanged. |

@@ -19,6 +19,7 @@ const bookingSchema = proposalSchema.omit({ customerPhone: true }).extend({
 const errors = {
   unauthorized: [401, "A valid API key is required."],
   invalid_request: [400, "Check the request parameters."],
+  range_too_large: [400, "The date range may cover at most 14 days."],
   forbidden_business: [403, "This API key is not authorised for that business."],
   service_not_found: [404, "Service not found."],
   staff_not_found: [404, "Staff member not found for this service."],
@@ -105,12 +106,16 @@ export async function start({ serviceToken, day }) {
         if (!url.searchParams.get("service")) return fail("invalid_request");
         if (url.searchParams.get("service") !== service.id) return fail("service_not_found");
         if (url.searchParams.get("staff") && url.searchParams.get("staff") !== staff.id) return fail("staff_not_found");
-        const date = url.searchParams.get("date");
-        if (!date) return fail("invalid_request");
-        const slots = starts.filter(s => date === day && !taken.has(Date.parse(s))).map(start => ({ start,
+        const date = url.searchParams.get("date"), from = url.searchParams.get("from"), to = url.searchParams.get("to");
+        const first = date ?? from, last = date ?? to ?? from;
+        const validDay = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) &&
+          new Date(value).toISOString().startsWith(value);
+        if ((date && (from || to)) || !validDay(first) || !validDay(last) || last < first) return fail("invalid_request");
+        if (Date.parse(last) - Date.parse(first) >= 14 * 86400000) return fail("range_too_large");
+        const slots = starts.filter(s => first <= day && day <= last && !taken.has(Date.parse(s))).map(start => ({ start,
           end: local(Date.parse(start) + service.durationMinutes * 60000), durationMinutes: service.durationMinutes,
           serviceId: service.id, serviceVersion: service.version, staff, ...place }));
-        return ok({ apiVersion: "v1", business, service, range: { from: date, to: date, timeZone: business.timeZone }, slots });
+        return ok({ apiVersion: "v1", business, service, range: { from: first, to: last, timeZone: business.timeZone }, slots });
       }
       const proposal = path === "/api/v1/proposals";
       if (req.method !== "POST" || (!proposal && path !== "/api/v1/bookings")) return fail("invalid_request");
@@ -153,11 +158,16 @@ export async function start({ serviceToken, day }) {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const salon = "http://127.0.0.1:" + /** @type {import("node:net").AddressInfo} */ (server.address()).port;
-  async function approve(p) {
+  async function approve(p, expired = false) {
     const decision = body => fetch(salon + "/consent/" + p.id + "/decision", { method: "POST", redirect: "error",
       headers: { origin: salon, "content-type": "application/json" }, body: JSON.stringify(body) });
     const { token } = proposals.get(p.id);
     const viewed = await decision({ token, decision: "view" });
+    if (expired) {
+      assert.equal(viewed.status, 403);
+      assert.deepEqual(await viewed.json(), { error: "consent_denied" });
+      return;
+    }
     assert.equal(viewed.status, 200);
     const { proposalHash } = await viewed.json();
     const approved = await decision({ token, decision: "yes", proposalHash });
@@ -169,6 +179,7 @@ export async function start({ serviceToken, day }) {
       case "stats": return { stats: { proposalsCreated: proposals.size, bookingsCreated: bookings.size } };
       case "calendar": return { bookings: [...bookings.values()] };
       case "occupy": taken.add(Date.parse(input.start)); return;
+      case "expireProposal": proposals.get(input.proposalId).proposal.expiresAt = new Date(Date.now() - 1000).toISOString(); return;
       case "expire": mandates.get(input.mandateId).expiresAt = Date.now() - 1000; return;
       case "price": service.price.amountMinor = input.amountMinor; return;
       default: throw new Error("Unknown test action");
