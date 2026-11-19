@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import { z } from "zod";
 const id = z.string().trim().min(1).max(128);
 export const proposalSchema = z.object({

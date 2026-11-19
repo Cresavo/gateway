@@ -1,0 +1,23 @@
+name: Bug report
+description: Something in the gateway does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems: do not file them here. Use "Report a vulnerability" under the Security tab.
+        Use fictional data only. Never paste tokens, API keys or real contact details.
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: What you did, what you expected, what you got. }
+    validations: { required: true }
+  - type: textarea
+    id: reproduce
+    attributes: { label: Steps to reproduce, description: Commands or requests with fictional data. Redact all credentials. }
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: Gateway version or commit }
+  - type: input
+    id: node
+    attributes: { label: Node version }

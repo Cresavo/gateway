@@ -1,17 +1,17 @@
 openapi: 3.1.0
 info:
   title: Booking Lab Agent API
-  version: "1.3.0-sandbox"
+  version: "1.4.1-sandbox"
   description: |
     Sandbox API for AI agents on the synthetic Booking Lab demo salon (Salong Eko):
-    services, availability, booking with Idempotency-Key, booking status and
-    cancellation. The same tools are exposed over MCP (Streamable HTTP) at
+    services, availability, booking proposals, creation with Idempotency-Key and status.
+    The gateway refuses direct cancellation. The same tools are exposed over MCP (Streamable HTTP) at
     /api/v1/mcp with the same key. Rescheduling is not part of v1.
     Every key belongs to one business plus a named agent and a responsible person.
     Ownership belongs to a stable client, not a credential: operator rotation
     revokes the old key while retaining booking ownership and idempotency.
-    Creation requires a server-stored synthetic operator mandate. This is not
-    verified consent from a real customer.
+    Creation requires a server-stored synthetic operator or customer-lab mandate. This is not
+    verified consent from a real customer. The salon-only /live feed is not an audit log.
     Place/schedule ids are resolved by the server and checked against the stored
     grant; booking input cannot override them. USP discovery and MCP name aliases
     retain this native contract, rather than the canonical USP wire format.
@@ -21,6 +21,58 @@ security:
   - bearerKey: []
   - apiKeyHeader: []
 paths:
+  /api/v1/proposals:
+    post:
+      x-required-scopes: ["bookings:write"]
+      summary: Propose an exact booking in an explicitly enabled local consent lab
+      description: |
+        No booking or authority is created. In server-configured separate-lab mode,
+        approvalRequired=true and approvalDelivery=separate-synthetic-customer are
+        returned; no approval URL, bearer token, inbox path or customer contact is
+        returned. The operator delivers approval through a private local test inbox.
+        The fixed server-owned synthetic customer cannot be selected through JSON.
+        Legacy local labs may return approvalUrl; that mode proves no independent
+        customer identity. Neither mode is available for a real customer deployment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [business, serviceId, serviceVersion, staffId, start]
+              properties:
+                business: { type: string, minLength: 1, maxLength: 128 }
+                serviceId: { type: string, minLength: 1, maxLength: 128 }
+                serviceVersion: { type: integer, minimum: 1 }
+                staffId: { type: string, minLength: 1, maxLength: 128 }
+                start: { type: string, format: date-time }
+                customerPhone: { type: string, maxLength: 32, description: Legacy simulated OTP lab only; rejected in separate-lab mode. }
+      responses:
+        "201": { description: Pending proposal, content: { application/json: { schema: { $ref: "#/components/schemas/CreatedProposal" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/proposals/{id}:
+    get:
+      x-any-of-scopes: ["bookings:read", "bookings:write"]
+      summary: Read this stable client's proposal and approved mandate id
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Proposal status, content: { application/json: { schema: { $ref: "#/components/schemas/ProposalResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /api/v1/services:
     get:
       summary: List active services for a business
@@ -63,10 +115,14 @@ paths:
     post:
       summary: Book one slot from /availability
       description: |
-        Requires mandateId issued by the trusted synthetic test operator outside this API.
+        Requires mandateId issued by the trusted synthetic test operator or the
+        separately approved local customer proposal, never by client JSON.
         The server checks client, business, service, staff, complete treatment interval,
         current price cap, expiry, revocation and one-booking use. confirmed=true alone
-        grants no authority. No API or MCP tool issues mandates.
+        grants no authority. No agent API or MCP tool issues mandates.
+        Separate-lab customer mandates additionally bind the immutable synthetic
+        name/email shown in the customer confirmation. Changing contact is denied,
+        including after switching server delivery configuration.
         The sandbox only accepts customer emails ending in @example.test. Retrying with the same
         Idempotency-Key and body returns the same booking (200, replayed=true). Engine limits apply:
         5 bookings per stable client per day, 3 per normalised customer email per day.
@@ -100,12 +156,15 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
   /api/v1/bookings/{id}/cancel:
     post:
-      summary: Cancel a booking created by this key (idempotent)
+      summary: Cancellation requires an approved cancellation proposal
+      description: The gateway refuses direct cancellation until the salon supports approval.
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: Cancelled, content: { application/json: { schema: { $ref: "#/components/schemas/CancelResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+
 components:
   securitySchemes:
     bearerKey: { type: http, scheme: bearer, description: "Authorization: Bearer blk_<prefix>_<secret>" }
@@ -120,9 +179,56 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    CreatedProposal:
+      type: object
+      additionalProperties: false
+      required: [proposal]
+      properties:
+        proposal: { $ref: "#/components/schemas/Proposal" }
+        approvalUrl: { type: string, format: uri, description: Legacy local bearer link. }
+        approvalRequired: { const: true }
+        approvalDelivery: { const: separate-synthetic-customer }
+      oneOf:
+        - required: [approvalUrl]
+          not: { anyOf: [{ required: [approvalRequired] }, { required: [approvalDelivery] }] }
+        - required: [approvalRequired, approvalDelivery]
+          not: { required: [approvalUrl] }
+    ProposalResponse:
+      type: object
+      additionalProperties: false
+      required: [proposal]
+      properties:
+        proposal: { $ref: "#/components/schemas/Proposal" }
+    Proposal:
+      type: object
+      additionalProperties: false
+      if: { properties: { status: { const: approved } } }
+      then: { required: [mandateId] }
+      else: { not: { required: [mandateId] } }
+      required: [id, status, serviceId, serviceVersion, serviceName, staff, locationId, scheduleId, salon, start, durationMinutes, price, expiresAt]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [pending, approved, declined, expired] }
+        serviceId: { type: string }
+        serviceVersion: { type: integer }
+        serviceName: { type: string }
+        staff: { $ref: "#/components/schemas/Staff" }
+        locationId: { type: string }
+        scheduleId: { type: string }
+        salon: { type: string }
+        start: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        price:
+          type: object
+          required: [amountMinor, currency]
+          properties:
+            amountMinor: { type: integer }
+            currency: { type: string, const: SEK }
+        expiresAt: { type: string, format: date-time }
+        mandateId: { type: string }
     Business:
       type: object
-      required: [id, name, timeZone]
+      required: [id, name, timeZone, locationId]
       properties:
         id: { type: string }
         name: { type: string }
@@ -150,7 +256,7 @@ components:
         staff: { type: array, items: { $ref: "#/components/schemas/Staff" } }
     Slot:
       type: object
-      required: [start, end, durationMinutes, serviceId, serviceVersion, staff]
+      required: [start, end, durationMinutes, serviceId, serviceVersion, staff, locationId, scheduleId]
       properties:
         start: { type: string, format: date-time, example: "2026-11-16T09:00:00+01:00" }
         end: { type: string, format: date-time, example: "2026-11-16T10:00:00+01:00" }
@@ -199,10 +305,10 @@ components:
             name: { type: string }
             email: { type: string, format: email, example: "person@example.test" }
         confirmed: { type: boolean, const: true }
-        mandateId: { type: string, minLength: 1, maxLength: 128, description: Opaque operator-issued synthetic mandate id; cannot be self-issued by the client. }
+        mandateId: { type: string, minLength: 1, maxLength: 128, description: Opaque server-issued synthetic mandate id; cannot be self-issued by the client. }
     Booking:
       type: object
-      required: [id, status, start, end, durationMinutes, serviceId, serviceName, staff, version, createdAt]
+      required: [id, status, start, end, durationMinutes, serviceId, serviceName, staff, version, createdAt, locationId, scheduleId]
       properties:
         id: { type: string }
         status: { type: string, enum: [confirmed, cancelled] }
@@ -222,12 +328,6 @@ components:
         apiVersion: { type: string, const: v1 }
         replayed: { type: boolean }
         booking: { $ref: "#/components/schemas/Booking" }
-    CancelResponse:
-      type: object
-      properties:
-        apiVersion: { type: string, const: v1 }
-        alreadyCancelled: { type: boolean }
-        booking: { $ref: "#/components/schemas/Booking" }
     Error:
       type: object
       required: [apiVersion, error]
@@ -239,5 +339,5 @@ components:
           properties:
             code:
               type: string
-              enum: [unauthorized, forbidden_scope, forbidden_business, business_not_found, service_not_found, staff_not_found, booking_not_found, invalid_request, range_too_large, idempotency_key_required, confirmation_required, mandate_required, mandate_denied, synthetic_contact_required, slot_unavailable, stale_service, idempotency_conflict, rate_limited, internal_error]
+              enum: [unauthorized, forbidden_scope, forbidden_business, business_not_found, service_not_found, staff_not_found, booking_not_found, invalid_request, range_too_large, idempotency_key_required, confirmation_required, mandate_required, mandate_denied, synthetic_contact_required, slot_unavailable, stale_service, idempotency_conflict, rate_limited, internal_error, not_found, request_too_large, forbidden_origin, provider_unavailable, provider_invalid_response, provider_configuration_invalid]
             message: { type: string }
