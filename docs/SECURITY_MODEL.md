@@ -40,7 +40,7 @@ Discovery, OpenAPI and liveness are public. Services, availability, proposal and
 ### 4.2 Agents → salon (agent credentials)
 
 - The salon authenticates every agent credential. The gateway only checks that one is present (`authorization` or `x-api-key`) and forwards it.
-- Before each operation the gateway calls authenticated `GET /api/v1/access`. The answer must contain `apiVersion: "v1"`, `providerMode: "split"` and a `scopes` array. Anything else gives 503 `provider_configuration_invalid` and the operation is not sent.
+- The gateway calls authenticated `GET /api/v1/access` once per incoming HTTP request that reaches salon authentication. All steps in that request share the result. The next request gets a fresh check. A successful access response must contain `apiVersion: "v1"`, `providerMode: "split"` and a `scopes` array. An invalid confirmation stops dispatch with 503 `provider_configuration_invalid`.
 - MCP tool calls are refused with 403 `forbidden_scope` when none of the tool's scopes are in the answer. The salon checks scopes again.
 - **Target model (accepted):** OAuth 2.1 with PKCE, 15-minute access tokens, rotating refresh tokens with reuse detection, separate read and write scopes. No third-party owner API keys.
 - **Current state (gap):** the v1 contract still advertises provider-issued agent keys (`blk_<prefix>_<secret>`, `accepted_mechanisms: ["api_key"]`). These are per-agent keys issued by the salon for the synthetic demo, not owner API keys. Moving to OAuth 2.1 is a salon change; the gateway then only forwards bearer access tokens and must:
@@ -86,7 +86,7 @@ The strict split-v1 booking input has no note field. Its response projection omi
 ## 7. What the gateway must never do
 
 1. **Invent a booking result.** On timeout, network error or invalid salon reply it answers 502/503 and tells the client to retry with the same idempotency key. It never answers "booked" without a salon response.
-2. **Cache access.** The split-mode and scope check is repeated for every operation, including status and cancel, and is never reused across requests or after a salon restart. Responses carry `cache-control: no-store`.
+2. **Reuse access across requests.** The access result belongs to one incoming request, including when MCP checks a tool's scope and then dispatches it. The salon independently checks the service identity, agent credential and required scope on the forwarded operation. Authenticated gateway responses carry `cache-control: no-store`.
 3. **Forward browser sessions.** Inbound cookies are not forwarded; upstream `set-cookie` is not returned. The gateway never handles the consent page.
 4. Follow redirects from the salon (requests use `redirect: "error"`, so credentials never reach a redirect target).
 5. Accept a salon origin with credentials, path, query or fragment, or plain HTTP to anything but loopback.
@@ -100,7 +100,7 @@ The strict split-v1 booking input has no note field. Its response projection omi
 | --- | --- |
 | Stolen agent credential used through the gateway | Salon verifies credential, scopes and business; writes still need a customer mandate; per-IP limits. Short-lived OAuth tokens once implemented. |
 | Gateway impersonation towards the salon | Service token checked by the salon; salon reports `providerMode: "split"` only after checking both credentials. |
-| Salon in wrong mode after restart | Per-operation access check, no caching. |
+| Salon in wrong mode after restart | Each incoming request gets a fresh access check. If the salon restarts in standalone mode between that check and dispatch, it rejects the gateway-marked operation. |
 | Agent changes price, staff or time after consent | Mandate hash re-checked at booking; mismatch is `mandate_denied`. |
 | Double booking through retries | Salon idempotency keys and transactional scheduling; gateway passes the key through. |
 | SMS pumping through proposals | Proposal bucket 5/hour per IP; salon stable-client budget. |

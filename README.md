@@ -14,7 +14,7 @@ AI assistant ──▶ gateway (this repo)                ──▶ Cresavo salo
 ```
 
 - Bookings are **propose and approve**: the assistant proposes, the customer approves on the salon's consent page, and the salon books only within what the customer approved (service, staff, time, duration, price).
-- Before each operation the gateway asks the salon (`GET /api/v1/access`) whether it runs in split mode and which scopes the caller has. Nothing is cached.
+- For each incoming request that reaches salon authentication, the gateway calls `GET /api/v1/access` once to confirm split mode and the caller's scopes. The result is shared only within that request.
 - The gateway never invents a booking result. On a timeout, retry with the same `Idempotency-Key`.
 
 Read [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md) before changing anything that touches auth, limits or forwarding.
