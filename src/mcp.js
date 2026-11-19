@@ -14,7 +14,7 @@ const descriptions = {
   get_service: "Read one service from the authorised catalog.",
   get_availability: "Find bookable starts for a service, date and optional staff.",
   create_booking: "Book after explicit confirmation under a server-issued mandate. Reuse the same idempotencyKey on retry. Synthetic contacts only.",
-  get_booking: "Read an owned booking.", cancel_booking: "Cancel an owned booking.",
+  get_booking: "Read an owned booking.", cancel_booking: "Cancellation requires an approved cancellation proposal and is currently unavailable.",
   create_proposal: "Prepare a synthetic booking for customer consent in supported labs.",
   get_proposal: "Read an owned booking proposal.",
 };
@@ -28,7 +28,9 @@ async function operation(name, args, call) {
     const result = await call("GET", availability ? "/api/v1/availability" : "/api/v1/services", query.toString());
     if (name !== "get_service" || !result.ok) return result;
     const catalog = await result.json();
-    const row = catalog.services.find(s => s.id === service);
+    const id = service.trim();
+    if (!id || id.length > 128) return errorReply(400, "invalid_request", "Check the request parameters.");
+    const row = catalog.services.find(s => s.id === id);
     return row ? Response.json({ apiVersion: catalog.apiVersion, business: catalog.business, service: row })
       : errorReply(404, "service_not_found", "Service not found.");
   }
@@ -38,7 +40,7 @@ async function operation(name, args, call) {
   }
   if (name === "create_proposal") return call("POST", "/api/v1/proposals", "", JSON.stringify(args));
   const id = args.bookingId ?? args.proposalId;
-  if (!safeId(id)) return errorReply(400, "invalid_request", "Invalid identifier.");
+  if (!safeId(id)) return errorReply(404, "booking_not_found", "Booking not found.");
   if (name === "get_proposal") return call("GET", "/api/v1/proposals/" + id);
   const path = "/api/v1/bookings/" + id;
   return name === "cancel_booking" ? call("POST", path + "/cancel") : call("GET", path);
@@ -67,7 +69,8 @@ export async function mcpResponse(request, call) {
       server.registerTool(alias, { description: descriptions[name], inputSchema: mcpInputs[name] },
         async args => {
           const response = await operation(name, args, call);
-          const body = await response.json();
+          const payload = await response.json();
+          const body = response.ok ? payload : { error: payload.error };
           const content = [{ type: /** @type {const} */ ("text"), text: JSON.stringify(body) }];
           return response.ok ? { content, structuredContent: body } : { isError: true, content };
         });

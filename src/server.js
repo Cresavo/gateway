@@ -17,9 +17,10 @@ export function gateway(salon, serviceToken, options = {}) {
   const take = rateLimiter(options.limits ?? defaultLimits, options.now);
   const hops = options.trustProxyHops ?? 0;
   return createServer(async (req, res) => {
-    async function send(response) {
+    async function send(response, authenticated = false) {
       const bytes = Buffer.from(await response.arrayBuffer());
       const headers = Object.fromEntries(response.headers);
+      if (authenticated) headers["cache-control"] = "no-store";
       if (options.publicOrigin) headers["strict-transport-security"] = "max-age=31536000";
       headers["x-content-type-options"] = "nosniff";
       res.writeHead(response.status, headers);
@@ -71,12 +72,12 @@ export function gateway(salon, serviceToken, options = {}) {
       if (!verdict.ok) return await send(limited(verdict.retryAfter));
       const headers = new Headers();
       for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);
-      const call = provider.bind(null, headers);
+      const call = provider(headers);
       if (schema) {
         const auth = await call("GET", "/api/v1/access");
-        return await send(auth.ok ? Response.json(nativeMcpSchema()) : auth);
+        return await send(auth.ok ? Response.json(nativeMcpSchema()) : auth, true);
       }
-      if (mcp) return await send(await mcpResponse(new Request(url, { method: req.method, headers, body }), call));
+      if (mcp) return await send(await mcpResponse(new Request(url, { method: req.method, headers, body }), call), true);
       return await send(await call(req.method, url.pathname, url.search, body, headers.get("idempotency-key")));
     } catch {
       if (!res.headersSent) return await send(errorReply(500, "internal_error", "Gateway request failed."));

@@ -49,6 +49,7 @@ test("only booking operations cross the boundary; admin cookies and spoofed iden
   assert.equal(body.headers.get("set-cookie"), null);
   assert.equal(seen.length, 2);
   assert.equal(seen[0].path, "/api/v1/access");
+  assert.equal(seen[0].headers["idempotency-key"], undefined);
   assert.equal(seen[1].headers["idempotency-key"], "test-key");
   assert.ok(seen[1].headers["x-booking-gateway-token"] === serviceToken);
   assert.equal(body.headers.get("x-booking-gateway-token"), null);
@@ -89,7 +90,9 @@ test("MCP discovery requires client access and a restricted client cannot invoke
   const base = await listen(t, gateway(salon, serviceToken));
   assert.equal((await fetch(base + "/api/v1/mcp/schema")).status, 401);
   const headers = { authorization: "Bearer dummy", "content-type": "application/json" };
-  assert.equal((await fetch(base + "/api/v1/mcp/schema", { headers })).status, 200);
+  const schema = await fetch(base + "/api/v1/mcp/schema", { headers });
+  assert.equal(schema.status, 200);
+  assert.equal(schema.headers.get("cache-control"), "no-store");
   const rpc = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "usp_bookings_create", arguments: {} } };
   assert.equal((await fetch(base + "/api/v1/mcp", { method: "POST", headers, body: JSON.stringify(rpc) })).status, 403);
   assert.deepEqual(seen, ["/api/v1/access", "/api/v1/access"]);
@@ -153,4 +156,99 @@ test("a provider losing split mode is refused on the next request without restar
   split = false;
   assert.equal((await create()).status, 503);
   assert.equal(bookings, 1);
+});
+test("provider 5xx bodies are sanitised on both access and actual operations", async t => {
+  let failAccess = true;
+  const marker = "synthetic-internal-detail";
+  const salon = await listen(t, createServer((req, res) => {
+    if (req.url === "/api/v1/access" && !failAccess) {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ apiVersion: "v1", providerMode: "split", scopes: ["bookings:read"] }));
+    }
+    res.writeHead(500, { "content-type": "application/json", "x-internal": marker });
+    res.end(JSON.stringify({ error: { message: marker } }));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  for (failAccess of [true, false]) {
+    const response = await fetch(base + "/api/v1/bookings/synthetic", { headers: { authorization: "Bearer synthetic" } });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("x-internal"), null);
+    const body = await response.text();
+    assert.equal(body.includes(marker), false);
+    assert.equal(JSON.parse(body).error.code, "provider_unavailable");
+  }
+});
+
+async function toolResult(response) {
+  const text = await response.text();
+  const data = response.headers.get("content-type").includes("text/event-stream")
+    ? text.split("\n").find(line => line.startsWith("data: ")).slice(6)
+    : text;
+  return JSON.parse(data).result;
+}
+
+test("MCP reuses the access check only within the incoming request", async t => {
+  const seen = [];
+  const salon = await listen(t, createServer((req, res) => {
+    seen.push(req.url);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(req.url === "/api/v1/access"
+      ? { apiVersion: "v1", providerMode: "split", scopes: ["services:read"] }
+      : { apiVersion: "v1", business: { id: "demo" }, services: [] }));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  const rpc = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "list_services", arguments: { business: "demo" } } };
+  for (let i = 0; i < 2; i++) {
+    const response = await fetch(base + "/api/v1/mcp", { method: "POST", headers: {
+      authorization: "Bearer synthetic", "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+    }, body: JSON.stringify(rpc) });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal((await toolResult(response)).isError ?? false, false);
+  }
+  assert.deepEqual(seen, ["/api/v1/access", "/api/v1/services?business=demo", "/api/v1/access", "/api/v1/services?business=demo"]);
+});
+
+test("even a write-scoped client cannot cancel directly over REST or MCP", async t => {
+  const seen = [];
+  const salon = await listen(t, createServer((req, res) => {
+    seen.push(req.url);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ apiVersion: "v1", providerMode: "split", scopes: ["bookings:write"] }));
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  const headers = { authorization: "Bearer synthetic", "content-type": "application/json",
+    accept: "application/json, text/event-stream" };
+  const rest = await fetch(base + "/api/v1/bookings/owned/cancel", { method: "POST", headers });
+  assert.equal(rest.status, 403);
+  assert.equal((await rest.json()).error.code, "mandate_denied");
+  const rpc = await fetch(base + "/api/v1/mcp", { method: "POST", headers,
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call",
+      params: { name: "cancel_booking", arguments: { bookingId: "owned" } } }) });
+  const result = await toolResult(rpc);
+  assert.equal(result.isError, true);
+  assert.equal(JSON.parse(result.content[0].text).error.code, "mandate_denied");
+  assert.deepEqual(seen, ["/api/v1/access", "/api/v1/access"]);
+});
+
+test("malformed salon success documents fail closed at the correct hop", async t => {
+  let validProfile = false;
+  const salon = await listen(t, createServer((req, res) => {
+    if (req.url === "/api/v1/access" && !validProfile) {
+      res.writeHead(200, { "content-type": "text/html" });
+      return res.end("<html></html>");
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(req.url === "/api/v1/access" ? JSON.stringify({ apiVersion: "v1", providerMode: "split", scopes: ["bookings:read"] }) : "{");
+  }));
+  const base = await listen(t, gateway(salon, serviceToken));
+  const read = () => fetch(base + "/api/v1/bookings/owned", { headers: { authorization: "Bearer synthetic" } });
+  const profile = await read();
+  assert.equal(profile.status, 503);
+  assert.equal((await profile.json()).error.code, "provider_configuration_invalid");
+  validProfile = true;
+  const operation = await read();
+  assert.equal(operation.status, 502);
+  assert.equal((await operation.json()).error.code, "provider_invalid_response");
 });
