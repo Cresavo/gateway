@@ -1,61 +1,93 @@
-# Booking Lab Gateway
+# Cresavo gateway
 
-Private development repository for the agent-facing REST v1 and Streamable HTTP MCP service.
-The gateway runs as its own Node process. It targets the configured `SALON_ORIGIN` and authenticates that hop with a separate service credential.
-It has no database driver, salon checkout, admin cookie or service-wide booking credential.
+The agent-facing front door for [Cresavo](https://github.com/Cresavo/cresavo) salons. It lets AI assistants find a salon's services and free times and book them, through a REST v1 API and a Streamable HTTP MCP server, while every decision stays with the salon.
 
-## Run locally
+All data in this repository is fictional. The demo salon "Salong Eko" does not exist.
 
-Use Node 24 and an independently running Booking Lab salon provider in split mode. Generate 32 cryptographically random bytes, encoded as 64 lowercase hex characters. Supply the same value as `GATEWAY_SERVICE_TOKEN` to the two server processes only. Use a dedicated token per environment and restart both services when rotating it. Keep it out of clients, URLs, logs, and Git. Use loopback locally and HTTPS for remote transport. In PowerShell:
+## How it fits Cresavo
+
+```
+AI assistant ──▶ gateway (this repo)                ──▶ Cresavo salon provider (Cresavo/cresavo)
+                 REST v1, MCP, tool schemas,            database, calendar, prices, agent auth,
+                 discovery, OpenAPI, rate limits        customer consent, bookings
+                 no database, stores nothing
+```
+
+- Bookings are **propose and approve**: the assistant proposes, the customer approves on the salon's consent page, and the salon books only within what the customer approved (service, staff, time, duration, price).
+- Before each operation the gateway asks the salon (`GET /api/v1/access`) whether it runs in split mode and which scopes the caller has. Nothing is cached.
+- The gateway never invents a booking result. On a timeout, retry with the same `Idempotency-Key`.
+
+Read [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md) before changing anything that touches auth, limits or forwarding.
+
+## Quickstart
+
+Needs Node 24 and a Cresavo provider running in split mode (see `docs/GATEWAY_SPLIT.md` in the Cresavo repository).
+
+```sh
+npm ci
+npm test            # unit tests
+npm run test:e2e    # full path with a fictional provider, see docs/E2E.md
+```
+
+Run against a local provider. Generate a 32-byte random token, give the same value to both processes, and keep it out of Git, URLs and logs:
+
+```sh
+export GATEWAY_SERVICE_TOKEN="$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")"
+export SALON_ORIGIN=http://127.0.0.1:3217
+export PORT=3218
+npm start
+```
+
+PowerShell:
 
 ```powershell
-npm ci
-npm test
+$env:GATEWAY_SERVICE_TOKEN = node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 $env:SALON_ORIGIN = 'http://127.0.0.1:3217'
 $env:PORT = '3218'
 npm start
 ```
 
-Discovery: `http://127.0.0.1:3218/.well-known/usp`. OpenAPI: `/api/v1/openapi`.
-Use provider-issued, synthetic agent credentials via an authorization header for booking REST and MCP.
-Never pass secrets in URLs. The listener is restricted to IPv4 loopback; this release has no internet hosting configuration.
+Endpoints on `http://127.0.0.1:3218`:
 
-## Ownership and trust
+| Path | What |
+| --- | --- |
+| `/.well-known/usp` | Discovery profile |
+| `/llms.txt` | Short guide for assistants |
+| `/api/v1/openapi` | OpenAPI 3.1 contract |
+| `/api/v1/mcp` | Streamable HTTP MCP |
+| `/api/v1/mcp/schema` | Native MCP input schemas (needs an agent credential) |
+| `/healthz` | Liveness, no salon call |
 
-This repository owns the gateway listener, MCP server, native tool schemas, aliases, discovery,
-and the client-facing HTTP adapter. The salon owns its database, calendar, staff, pricing,
-authentication of provider-issued agent keys, stored customer mandates, booking ownership,
-idempotency and transactional scheduling. The gateway asks the salon for active scopes before
-MCP dispatch. The salon independently checks the presented credential and performs its mandate,
-ownership and conflict checks at the point of use. Browser sessions never cross this boundary.
-Before forwarding any agent operation, the gateway calls authenticated `GET /api/v1/access`.
-A successful response must contain `apiVersion: "v1"`, `providerMode: "split"` and
-a scopes array. The salon sets the mode only after checking both credentials.
-An absent or standalone mode yields 503 `provider_configuration_invalid` before
-the requested operation is sent. An authentication failure retains its 401/403.
-This check is repeated for each operation, including status and cancellation.
-It is never cached across requests or a provider restart. Both server processes
-must be upgraded together. Discovery documents remain available without a provider.
+Agent credentials go in the `Authorization` header, never in URLs.
 
-One MCP call can result in multiple access checks and an operation against the
-provider's rate budget. The confirmation describes the configured provider's
-mode at the access check. Loopback or HTTPS transport is still required.
+## Configuration
 
-The initial adapter targets the Booking Lab salon v1 contract. An independent vendor would supply
-an adapter and its own authorisation integration. No partner compatibility or external assistant certification is implied.
-If an operation times out, retry with the **same** Idempotency-Key. The gateway never invents a booking result.
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SALON_ORIGIN` | required | Salon provider origin. HTTPS, or HTTP on loopback only. |
+| `GATEWAY_SERVICE_TOKEN` | required | 64 lowercase hex characters, shared with the salon. Secret. |
+| `PORT` | `3218` | Listen port. |
+| `GATEWAY_ALLOW_REMOTE` | `0` | `1` enables remote mode. |
+| `GATEWAY_LISTEN_HOST` | `127.0.0.1` | `0.0.0.0` or `::` only in remote mode. |
+| `GATEWAY_PUBLIC_ORIGIN` | unset | Public `https://` origin, required in remote mode. |
+| `GATEWAY_TRUST_PROXY_HOPS` | `0` | Proxies in front that append `X-Forwarded-For`, required (≥ 1) in remote mode. |
 
-## Cross-repository acceptance
+The default is loopback only. Remote mode refuses to start unless every remote flag is set correctly. See [`docs/HOSTING.md`](docs/HOSTING.md).
 
-In the private [salon repository](https://github.com/niclasvestlund-YT/booking-lab-se/tree/main),
-follow `docs/GATEWAY_SPLIT.md`. The suite uses a real HTTP MCP SDK client and a standalone REST client.
-It checks that an authenticated salon calendar contains the precise MCP-created booking ID.
-The gateway uses local HTTP as a transport; no gateway process receives a database URL.
+## Documentation
 
-## Source and licensing
+- [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md): threat model, tokens, limits, what the gateway never does
+- [`docs/HOSTING.md`](docs/HOSTING.md): hosting options and the chosen setup
+- [`docs/E2E.md`](docs/E2E.md): end-to-end test
+- [`docs/PUBLICATION_AUDIT.md`](docs/PUBLICATION_AUDIT.md): history audit before publication
+- [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), [`CHANGELOG.md`](CHANGELOG.md)
 
-AGPL-3.0-only, as in the original project. MCP input schemas, discovery and the v1 OpenAPI
-contract were adapted from booking-lab-se at `6f5d143e096d42ff98e3714dee5ccc402a40e01b`.
-Runtime packages are pinned in the lockfile. The MCP server and core packages use Apache-2.0,
-and Zod uses MIT. Their original license files are distributed in the npm packages.
-No salon source tree, database dump or private Git history was imported.
+## Compatibility
+
+The adapter targets the Cresavo salon v1 contract. Discovery uses the USP profile format and MCP tool-name aliases only; full USP conformance is not claimed. No partner compatibility or assistant certification is implied.
+
+## License
+
+AGPL-3.0-only, see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). If you run a modified version as a network service, you must offer its source to its users.
+
+MCP input schemas, discovery and the v1 OpenAPI contract were adapted from the Cresavo salon repository (formerly `booking-lab-se`) at `6f5d143e096d42ff98e3714dee5ccc402a40e01b`. Runtime dependencies: the MCP SDK packages (Apache-2.0) and Zod (MIT); their license files ship in the npm packages.

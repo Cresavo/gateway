@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 const DEMO_LOCATION_ID = "demo-location";
 const ZONE = "Europe/Stockholm";
 const USP_VERSION = "2026-08-20";

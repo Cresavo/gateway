@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -110,7 +111,9 @@ test("all agent operations refuse legacy, missing or malformed split confirmatio
     res.writeHead(200, { "content-type": "application/json" });
     res.end(typeof profile === "string" ? profile : JSON.stringify(profile));
   }));
-  const base = await listen(t, gateway(salon, serviceToken));
+  const roomy = { limit: 1000, windowMs: 60_000 };
+  const limits = { read: roomy, proposal_create: roomy, booking_create: roomy };
+  const base = await listen(t, gateway(salon, serviceToken, { limits }));
   for (profile of [
     { apiVersion: "v1", scopes: [] },
     { apiVersion: "v1", providerMode: "standalone", scopes: [] },

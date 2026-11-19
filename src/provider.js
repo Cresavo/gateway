@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 const reads = /^\/api\/v1\/(?:services|availability|bookings\/[\w-]{1,128}|proposals\/[\w-]{1,128})$/;
 const writes = /^\/api\/v1\/(?:bookings|proposals|bookings\/[\w-]{1,128}\/cancel)$/;
 

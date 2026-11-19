@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Cresavo/gateway/security/advisories/new
+    about: Report privately. Do not open a public issue.
+  - name: Salon-side issues
+    url: https://github.com/Cresavo/cresavo/issues
+    about: Database, consent page, mandates and bookings live in Cresavo.

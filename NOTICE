@@ -1,0 +1,24 @@
+Cresavo gateway
+Copyright (C) 2026 Cresavo contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3 only.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program (LICENSE). If not, see <https://www.gnu.org/licenses/>.
+
+Section 13: if you modify this program and let users interact with it over a
+network, you must offer those users the corresponding source of your version.
+
+Parts of the MCP input schemas, discovery profile and v1 OpenAPI contract were
+adapted from the Cresavo salon repository (formerly booking-lab-se) at commit
+6f5d143e096d42ff98e3714dee5ccc402a40e01b, under the same license.
+
+Third-party runtime dependencies keep their own licenses:
+- @modelcontextprotocol/server, @modelcontextprotocol/core: Apache-2.0
+- zod: MIT

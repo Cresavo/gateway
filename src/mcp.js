@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { mcpInputs, uspAliases } from "./mcp-inputs.js";
 import { errorReply } from "./provider.js";
@@ -67,7 +68,7 @@ export async function mcpResponse(request, call) {
         async args => {
           const response = await operation(name, args, call);
           const body = await response.json();
-          const content = [{ type: "text", text: JSON.stringify(body) }];
+          const content = [{ type: /** @type {const} */ ("text"), text: JSON.stringify(body) }];
           return response.ok ? { content, structuredContent: body } : { isError: true, content };
         });
     }

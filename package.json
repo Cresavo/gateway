@@ -1,5 +1,5 @@
 {
-  "name": "booking-lab-gateway",
+  "name": "cresavo-gateway",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,11 +9,22 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test",
-    "build": "node --check src/server.js && node --check src/provider.js && node --check src/mcp.js && node --check src/mcp-inputs.js"
+    "test": "node --test test/*.test.js",
+    "test:e2e": "node scripts/e2e.js",
+    "lint": "eslint .",
+    "typecheck": "tsc -p .",
+    "build": "node --check src/server.js && node --check src/provider.js && node --check src/mcp.js && node --check src/mcp-inputs.js && node --check src/limits.js && node --check src/config.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "26.6.6",
+    "eslint": "10.15.0",
+    "globals": "17.14.0",
+    "typescript": "7.0.2"
   }
 }
