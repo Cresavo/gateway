@@ -39,9 +39,9 @@
       </div>
 
       <figure class="flow" aria-labelledby="flow-caption">
-        <svg class="flow-svg" viewBox="0 0 440 360" role="img" aria-labelledby="flow-title flow-desc">
+        <svg class="flow-svg" viewBox="0 0 440 340" role="img" aria-labelledby="flow-title flow-desc">
           <title id="flow-title">How a request travels</title>
-          <desc id="flow-desc">An AI assistant calls the gateway, the gateway calls the salon, the salon asks the customer for approval on their phone, and the booking is confirmed.</desc>
+          <desc id="flow-desc">An AI assistant proposes a booking through the gateway. The salon asks the customer to approve it on their phone. After approval the assistant calls create_booking through the gateway, and the salon books it.</desc>
           <defs>
             <linearGradient id="g-line" x1="0" x2="1">
               <stop offset="0" stop-color="currentColor" stop-opacity=".15"/>
@@ -52,16 +52,16 @@
           <path class="link" d="M118 70 H182"/>
           <path class="link" d="M258 70 H322"/>
           <path class="link" d="M360 140 V196"/>
-          <path class="link" d="M322 250 H258"/>
+          <path class="link" d="M220 140 V228"/>
           <path class="flowline l1" d="M118 70 H182"/>
           <path class="flowline l2" d="M258 70 H322"/>
           <path class="flowline l3" d="M360 140 V196"/>
-          <path class="flowline l4" d="M322 250 H258"/>
+          <path class="flowline l4" d="M220 140 V228"/>
           <!-- packets -->
           <circle class="packet p1" r="5" cx="118" cy="70"/>
           <circle class="packet p2" r="5" cx="258" cy="70"/>
           <circle class="packet p3" r="5" cx="360" cy="140"/>
-          <circle class="packet p4" r="5" cx="322" cy="250"/>
+          <circle class="packet p4" r="5" cx="220" cy="140"/>
           <!-- nodes -->
           <g class="node n1" transform="translate(42 32)">
             <rect width="76" height="76" rx="18"/>
@@ -85,7 +85,7 @@
             <path class="tick" d="M33 58l3 3 6-6"/>
             <path class="icon" d="M28 30h20 M28 38h14"/>
           </g>
-          <g class="node n5" transform="translate(182 212)">
+          <g class="node n5" transform="translate(182 228)">
             <rect width="76" height="76" rx="18"/>
             <rect class="icon" x="22" y="24" width="32" height="30" rx="4"/>
             <path class="icon" d="M22 32h32 M30 20v8 M46 20v8"/>
@@ -96,37 +96,38 @@
           <text class="label strong" x="220" y="128" text-anchor="middle">Gateway</text>
           <text class="label" x="360" y="128" text-anchor="middle">Salon</text>
           <text class="label" x="360" y="324" text-anchor="middle">Customer</text>
-          <text class="label" x="220" y="308" text-anchor="middle">Booked</text>
+          <text class="label" x="220" y="324" text-anchor="middle">Booked</text>
           <!-- step tags -->
           <text class="tag t1" x="150" y="58" text-anchor="middle">propose</text>
           <text class="tag t2" x="290" y="58" text-anchor="middle">forward</text>
           <text class="tag t3" x="374" y="172">ask</text>
-          <text class="tag t4" x="290" y="238" text-anchor="middle">approved</text>
+          <text class="tag t4" x="230" y="190">create_booking</text>
         </svg>
         <figcaption id="flow-caption">The gateway checks the salon's access on every request and never decides on its own.</figcaption>
       </figure>
     </div>
   </section>
 
-  <section class="wrap pillars" aria-label="Principles">
+  <section class="wrap pillars" aria-labelledby="principles">
+    <h2 id="principles" class="sr-only">Principles</h2>
     <div class="pillar">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
-      <h2>Consent built in</h2>
+      <h3>Consent built in</h3>
       <p>Every booking runs on a mandate the customer approved. Change the price, staff or time and it no longer counts.</p>
     </div>
     <div class="pillar">
       <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M4 20L20 4"/></svg>
-      <h2>Stores nothing</h2>
-      <p>No database and no logs of bodies or credentials. The salon owns the calendar, the data and every decision.</p>
+      <h3>No database</h3>
+      <p>Only in-memory rate-limit counters keyed by IP. No logs of bodies or credentials. The salon owns the calendar, the data and every decision.</p>
     </div>
     <div class="pillar">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>
-      <h2>Standard protocols</h2>
+      <h3>Standard protocols</h3>
       <p>MCP over Streamable HTTP for agents, REST with OpenAPI 3.1 for everything else. Same operations on both.</p>
     </div>
     <div class="pillar">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-      <h2>Safe to retry</h2>
+      <h3>Safe to retry</h3>
       <p>Timed out? Retry with the same idempotency key and get the original booking back, never a duplicate.</p>
     </div>
   </section>
@@ -164,7 +165,7 @@
       <div class="grid three outcomes">
         <div class="card small warn"><h3>Price or terms changed</h3><p>The mandate no longer matches: <code>mandate_denied</code>. Nothing is booked.</p></div>
         <div class="card small warn"><h3>Slot taken</h3><p>Someone else booked first: <code>slot_unavailable</code>. Propose a new time.</p></div>
-        <div class="card small warn"><h3>Approval expired</h3><p>The customer waited too long. The mandate is refused; start a new proposal.</p></div>
+        <div class="card small warn"><h3>Approval expired</h3><p>The customer waited too long: <code>mandate_denied</code>. Start a new proposal.</p></div>
       </div>
     </div>
   </section>
@@ -178,7 +179,7 @@
         <p>One JSON-RPC message per request.</p>
         <pre><code>{{ORIGIN}}/api/v1/mcp</code></pre>
         <p>Add it to any MCP client that supports remote servers and custom headers:</p>
-<pre class="term"><code>{
+<pre class="term" tabindex="0"><code>{
   "mcpServers": {
     "cresavo": {
       "type": "http",
@@ -192,7 +193,7 @@
         <h3><span class="badge">REST</span> OpenAPI 3.1</h3>
         <p>The same operations as plain HTTP.</p>
         <pre><code>{{ORIGIN}}/api/v1</code></pre>
-<pre class="term"><code>curl "{{ORIGIN}}/api/v1/services?business=demo" \
+<pre class="term" tabindex="0"><code>curl "{{ORIGIN}}/api/v1/services?business=demo" \
   -H "Authorization: Bearer $CRESAVO_AGENT_KEY"</code></pre>
         <p><a href="/api/v1/openapi">Download the OpenAPI contract</a>. Discovery for agents: <a href="/.well-known/usp"><code>/.well-known/usp</code></a> and <a href="/llms.txt"><code>/llms.txt</code></a>.</p>
       </div>
@@ -207,7 +208,7 @@
     <div class="wrap">
       <h2>MCP tools</h2>
       <p class="sub">Read tools are safe to call freely. Write tools always end at the customer.</p>
-      <div class="table">
+      <div class="table" tabindex="0" role="region" aria-label="MCP tools table">
         <table>
           <thead><tr><th scope="col">Tool</th><th scope="col">What it does</th><th scope="col">Scope</th></tr></thead>
           <tbody>
@@ -227,13 +228,13 @@
 
   <section id="limits" class="wrap block">
     <h2>Limits and errors</h2>
-    <p class="sub">Generous for real assistants, tight for abuse. The salon adds its own limits per agent and per customer.</p>
+    <p class="sub">Per client IP. Hosted assistants share egress IPs, so these caps apply to all their users together; contact the salon provider for higher limits. The salon adds its own limits per agent and per customer.</p>
     <div class="grid three">
-      <div class="card stat"><p class="big">60<span>/min</span></p><p>requests per IP</p><div class="meter" aria-hidden="true"><i class="m1"></i></div></div>
-      <div class="card stat"><p class="big">5<span>/hour</span></p><p>proposals per IP</p><div class="meter" aria-hidden="true"><i class="m2"></i></div></div>
-      <div class="card stat"><p class="big">5<span>/hour</span></p><p>bookings per IP</p><div class="meter" aria-hidden="true"><i class="m3"></i></div></div>
+      <div class="card stat"><p class="big">60<span>/min</span></p><p>requests per IP</p></div>
+      <div class="card stat"><p class="big">5<span>/hour</span></p><p>proposals per IP</p></div>
+      <div class="card stat"><p class="big">5<span>/hour</span></p><p>bookings per IP</p></div>
     </div>
-<pre class="term"><code>HTTP/1.1 429 Too Many Requests
+<pre class="term" tabindex="0"><code>HTTP/1.1 429 Too Many Requests
 Retry-After: 1800
 
 {"apiVersion":"v1","error":{"code":"rate_limited","message":"Too many requests. Retry later."}}</code></pre>
@@ -249,7 +250,7 @@ Retry-After: 1800
         <li>Invent a booking result. No salon answer means no booking.</li>
         <li>Reuse an access check across requests.</li>
         <li>Forward browser sessions, cookies or client IP headers.</li>
-        <li>Store or log credentials, customer data or request bodies.</li>
+        <li>Store customer data, or log credentials or request bodies. It has no database; only in-memory rate-limit counters keyed by IP.</li>
         <li>Take payments, export data or bulk delete.</li>
       </ul>
     </div>
