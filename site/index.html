@@ -1,0 +1,151 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cresavo Gateway</title>
+<meta name="description" content="Open-source REST and MCP gateway that lets AI assistants book salon appointments, with the customer's approval on every booking.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23196b5b'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>Cresavo Gateway</a>
+    <nav aria-label="Main">
+      <a href="#connect">Connect</a>
+      <a href="#flow">Booking flow</a>
+      <a href="#tools">Tools</a>
+      <a href="#limits">Limits</a>
+      <a href="https://github.com/Cresavo/gateway">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <p class="eyebrow">Open source · REST v1 · Streamable HTTP MCP</p>
+    <h1>Let AI assistants book salon appointments.<br>The customer approves every booking.</h1>
+    <p class="lead">Cresavo Gateway is the agent-facing front door to <a href="https://github.com/Cresavo/cresavo">Cresavo</a> salons. Your assistant finds services and free times, proposes a booking, and books only what the customer approved. The gateway stores nothing and decides nothing. The salon does.</p>
+    <div class="cta">
+      <a class="button" href="#connect">Connect an assistant</a>
+      <a class="button ghost" href="/api/v1/openapi">OpenAPI contract</a>
+    </div>
+    <p class="note">Demo phase: the salon behind this gateway, “Salong Eko”, is fictional. Use fictional contact details only.</p>
+  </section>
+
+  <section id="connect" class="wrap block">
+    <h2>Connect</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>MCP</h3>
+        <p>Streamable HTTP, one JSON-RPC message per request.</p>
+        <pre><code>{{ORIGIN}}/api/v1/mcp</code></pre>
+        <p>Add it to any MCP client that supports remote servers and custom headers:</p>
+<pre><code>{
+  "mcpServers": {
+    "cresavo": {
+      "type": "http",
+      "url": "{{ORIGIN}}/api/v1/mcp",
+      "headers": { "Authorization": "Bearer ${CRESAVO_AGENT_KEY}" }
+    }
+  }
+}</code></pre>
+      </div>
+      <div class="card">
+        <h3>REST</h3>
+        <p>The same operations as plain HTTP, described in OpenAPI 3.1.</p>
+        <pre><code>{{ORIGIN}}/api/v1</code></pre>
+<pre><code>curl "{{ORIGIN}}/api/v1/services?business=demo" \
+  -H "Authorization: Bearer $CRESAVO_AGENT_KEY"</code></pre>
+        <p>Discovery for agents: <a href="/.well-known/usp"><code>/.well-known/usp</code></a> and <a href="/llms.txt"><code>/llms.txt</code></a>.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Credentials.</strong> Agent credentials are issued by the salon provider, never by the gateway. Send them in the <code>Authorization</code> header only. Never put them in URLs, prompts or chat. To request demo access, <a href="https://github.com/Cresavo/gateway/issues">open an issue</a>.
+    </div>
+  </section>
+
+  <section id="flow" class="wrap block">
+    <h2>How a booking happens</h2>
+    <p class="sub">Third-party writes are propose and approve. Your assistant never holds the customer's approval link.</p>
+    <ol class="steps">
+      <li>
+        <span class="num">1</span>
+        <h3>Find</h3>
+        <p><code>list_services</code> and <code>get_availability</code> return services, prices in öre, staff and bookable starts.</p>
+      </li>
+      <li>
+        <span class="num">2</span>
+        <h3>Propose</h3>
+        <p><code>create_proposal</code> prepares exact terms: service, staff, start, duration and price. Nothing is reserved yet.</p>
+      </li>
+      <li>
+        <span class="num">3</span>
+        <h3>Customer approves</h3>
+        <p>The salon sends the customer a private link to its consent page. Approval creates a mandate locked to those exact terms.</p>
+      </li>
+      <li>
+        <span class="num">4</span>
+        <h3>Book</h3>
+        <p>Poll <code>get_proposal</code> for the <code>mandateId</code>, then call <code>create_booking</code> with a stable idempotency key.</p>
+      </li>
+    </ol>
+    <div class="grid three outcomes">
+      <div class="card small"><h3>Price or terms changed</h3><p>The mandate no longer matches. <code>mandate_denied</code>, nothing is booked.</p></div>
+      <div class="card small"><h3>Slot taken</h3><p>Someone else booked first. <code>slot_unavailable</code>, propose a new time.</p></div>
+      <div class="card small"><h3>Timeout or 503</h3><p>Retry with the <em>same</em> idempotency key. You get the original booking, never a duplicate.</p></div>
+    </div>
+  </section>
+
+  <section id="tools" class="wrap block">
+    <h2>MCP tools</h2>
+    <div class="table">
+      <table>
+        <thead><tr><th scope="col">Tool</th><th scope="col">What it does</th><th scope="col">Scope</th></tr></thead>
+        <tbody>
+          <tr><td><code>list_services</code></td><td>Services, prices and staff for a salon</td><td><code>services:read</code></td></tr>
+          <tr><td><code>get_availability</code></td><td>Bookable starts for a service and date</td><td><code>availability:read</code></td></tr>
+          <tr><td><code>create_proposal</code></td><td>Prepare a booking for customer approval</td><td><code>bookings:write</code></td></tr>
+          <tr><td><code>get_proposal</code></td><td>Status of a proposal and, once approved, its mandate</td><td><code>bookings:read</code></td></tr>
+          <tr><td><code>create_booking</code></td><td>Book under an approved mandate</td><td><code>bookings:write</code></td></tr>
+          <tr><td><code>get_booking</code></td><td>Status of a booking your client created</td><td><code>bookings:read</code></td></tr>
+          <tr><td><code>cancel_booking</code></td><td>Not available yet: cancellation will need its own customer approval</td><td>none</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sub">USP-style aliases (<code>usp_services_list</code>, <code>usp_availability_query</code>, <code>usp_bookings_create</code> and more) map to the same native inputs. Full USP conformance is not claimed.</p>
+  </section>
+
+  <section id="limits" class="wrap block">
+    <h2>Limits and errors</h2>
+    <div class="grid three">
+      <div class="card small"><p class="big">60<span>/min</span></p><p>requests per IP</p></div>
+      <div class="card small"><p class="big">5<span>/hour</span></p><p>proposals per IP</p></div>
+      <div class="card small"><p class="big">5<span>/hour</span></p><p>bookings per IP</p></div>
+    </div>
+    <p>Every limit answers <code>429</code> with <code>Retry-After</code>. The salon applies its own limits per agent and per customer on top. Errors use one shape: <code>{"apiVersion":"v1","error":{"code","message"}}</code>.</p>
+  </section>
+
+  <section class="wrap block">
+    <h2>What the gateway never does</h2>
+    <ul class="never">
+      <li>Invent a booking result. No salon answer means no booking.</li>
+      <li>Reuse an access check across requests.</li>
+      <li>Forward browser sessions, cookies or client IP headers.</li>
+      <li>Store or log credentials, customer data or request bodies.</li>
+      <li>Take payments, export data or bulk delete.</li>
+    </ul>
+    <p>Read the full <a href="https://github.com/Cresavo/gateway/blob/main/docs/SECURITY_MODEL.md">security model</a>. Found a problem? <a href="https://github.com/Cresavo/gateway/security/advisories/new">Report it privately</a>.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Cresavo Gateway is free software under <a href="https://github.com/Cresavo/gateway/blob/main/LICENSE">AGPL-3.0-only</a>. <a href="https://github.com/Cresavo/gateway">Source code</a> · <a href="/api/v1/openapi">OpenAPI</a> · <a href="/.well-known/usp">Discovery</a> · <a href="/llms.txt">llms.txt</a></p>
+    <p>No partner compatibility or assistant certification is implied.</p>
+  </div>
+</footer>
+</body>
+</html>
