@@ -10,6 +10,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Provider contract v1 (`docs/PROVIDER_CONTRACT.md`) and a guide for connecting any booking system (`docs/CONNECT_A_PROVIDER.md`).
 - `npm run provider:check`: a conformance check against a running provider. It is read-only by default; `--write` also creates one pending proposal. It never books anything and prints no credentials.
 - `npm run test:e2e -- --adapter <file>` runs the shared agent scenarios against any provider. The scenarios no longer assume Cresavo's business id, customer or delivery profile.
+- Optional shared rate limits through any Redis-protocol store (`GATEWAY_RATE_LIMIT_REDIS_URL`), atomic across instances. Creates fail closed when the store is unreachable. Required with `GATEWAY_REQUIRE_SHARED_LIMITS=1` and on Vercel.
+- `vercel.json` selects Vercel's container runtime for the existing `Dockerfile`.
 
 - Per-client-IP rate limits in the gateway before any salon call: 60 requests/min, 5 booking creates/hour, 5 proposal creates/hour. All answer 429 with `Retry-After`.
 - Explicit remote mode behind HTTPS: `GATEWAY_ALLOW_REMOTE`, `GATEWAY_LISTEN_HOST`, `GATEWAY_PUBLIC_ORIGIN`, `GATEWAY_TRUST_PROXY_HOPS`. Loopback stays the default; partial setups refuse to start.
