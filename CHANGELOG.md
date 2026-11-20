@@ -6,6 +6,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- Landing page for developers of AI assistants at `/`, served by the gateway itself. It is static and script-free, and sends a strict Content-Security-Policy. It advertises the configured public origin.
+
 - Per-client-IP rate limits in the gateway before any salon call: 60 requests/min, 5 booking creates/hour, 5 proposal creates/hour. All answer 429 with `Retry-After`.
 - Explicit remote mode behind HTTPS: `GATEWAY_ALLOW_REMOTE`, `GATEWAY_LISTEN_HOST`, `GATEWAY_PUBLIC_ORIGIN`, `GATEWAY_TRUST_PROXY_HOPS`. Loopback stays the default; partial setups refuse to start.
 - MCP requests must carry one JSON-RPC message; batches get 400. The body is parsed once and re-serialised before rate limiting and dispatch.
