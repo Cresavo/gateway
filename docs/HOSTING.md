@@ -2,6 +2,12 @@
 
 Goal: run the gateway beyond loopback, behind HTTPS, against the public Cresavo demo provider. Loopback stays the default.
 
+## Prerequisite: a public split-mode provider
+
+The gateway needs a provider in split mode that answers `GET /api/v1/access` with `providerMode: "split"`. For the hosted demo this is the Cresavo **sandbox**: the Cresavo engine with its own PostgreSQL and Redis, fictional data only, a nightly reset, and a private demo phone for customer consent. It is built in Cresavo pull requests 90–93 and described in Cresavo's `docs/DEPLOY_SANDBOX.md`. Until it is deployed, no public split-mode provider exists.
+
+`https://demo.cresavo.com` is not a provider. It serves the browser-only concept demo (`/studio`, `/boka/salong-eko`) without a database. Pointing `SALON_ORIGIN` at it fails closed: without a successful split confirmation from `GET /api/v1/access`, no operation is forwarded. Clients get an error (502 `provider_invalid_response`, 503 `provider_configuration_invalid` or the provider's own 4xx), never a booking result.
+
 ## Options
 
 | | Serverless functions (e.g. Vercel) | Small container host (one instance) | Self-managed VM |
@@ -38,6 +44,25 @@ The demo must never cost more than the plan already paid for. When a quota runs 
 - Out-of-quota behaviour is safe by design. If the store stops answering, reads continue on per-instance counters and creates are refused with 429. If the provider stops answering, the gateway answers `503 provider_unavailable` and never invents a booking result.
 
 The limiter checks and counts every bucket in one atomic Lua script, so instances never admit more than the limit together. If the store does not answer within 500 ms, reads fall back to the instance's own counters and creates (bookings and proposals) are refused with 429. A store outage never lifts the write limits.
+
+### Demo topology
+
+```
+assistant ──HTTPS──▶ gateway.cresavo.com    (Vercel project 1: this Dockerfile, container preset)
+                          │ HTTPS, x-booking-gateway-token + agent key
+                          │                   └─ shared Redis (free plan): gateway rate limits
+                          ▼
+                     sandbox provider        (Vercel project 2: Cresavo engine, split mode)
+                          │                   ├─ PostgreSQL (free plan): fictional data, nightly reset
+                          │                   └─ Redis (free plan): sandbox caps
+                          ▼
+                     demo phone              (consent page on the sandbox origin, never via the gateway)
+```
+
+- Two projects in the same Vercel team, each with its own budget and **pause production**, and separate custom domains. The gateway's Host/Origin pinning and the sandbox's consent origin never overlap.
+- One service token, used only by this pair. It lives in both projects' production environment variables and nowhere else. Rotation means updating both and redeploying both.
+- The gateway's Redis and the sandbox's Redis are separate stores, so one quota running out cannot lift the other's limits.
+- The gateway does not forward the agent's address to the provider. It applies its own per-IP limits and calls the sandbox from Vercel's egress addresses. That matches the sandbox design (Cresavo pull requests 91–93): the per-IP cap (3 pairings per UTC day, keyed on Vercel's `x-real-ip`) applies only to browser pairing at the sandbox. Pairing refuses requests that carry `x-booking-gateway-token` or an agent credential. Traffic through the gateway is limited per sandbox session (20 bookings, 256 calls; each gateway operation costs two calls because of the access check). Do not put another proxy, such as a CDN, in front of the sandbox: `x-real-ip` would then be that proxy's address.
 
 ## Configuration
 

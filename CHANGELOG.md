@@ -25,7 +25,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - `npm run test:e2e:real` exercises the shared SDK scenarios against a pinned Cresavo salon, PostgreSQL and authenticated Chromium calendar. The tested approval profile is `separate-lab`.
 
+- `docs/OWNER_CHECKLIST.md`: steps only the owner can take before and after publication.
+- Hosting plan: the Cresavo sandbox as the required split-mode provider, and the two-project Vercel demo topology.
+
 ### Changed
+
+- Publication audit redone over every branch and `refs/pull/*` ref (46 commits) and the pull request pages.
+- `scripts/real/run.sh` passes egress proxy, CA bundle and browser path settings through its clean environment when set. Its private PostgreSQL cluster uses `--locale=C --encoding=UTF8`.
+- `engines.node` is now `>=24`, matching the supported runtime. Dependabot ignores major Node image updates.
 
 - npm package name `booking-lab-gateway` → `cresavo-gateway` (not published to npm; no runtime effect).
 - The published OpenAPI includes both proposal operations. The fixture now uses `pending` in place of `pending_consent`, `proposal.serviceId`, `serviceVersion`, `start` and `durationMinutes` move out of `proposal.terms`. Its `staffId` becomes `proposal.staff.id`, and its `priceMinor` becomes `proposal.price.amountMinor`. The former fixture-only `proposal.consentUrl` is removed. Legacy Cresavo uses top-level `approvalUrl`; separate delivery returns `approvalRequired` and `approvalDelivery`. Consent decisions use JSON at `/consent/{id}/decision` in place of the fixture's form POST at `/consent/{id}`.
