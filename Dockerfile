@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Remote-mode image for one instance behind a TLS-terminating proxy. See docs/HOSTING.md.
-FROM node:24-slim
+FROM node:26-slim
 ENV NODE_ENV=production \
     PORT=3218 \
     GATEWAY_ALLOW_REMOTE=1 \
