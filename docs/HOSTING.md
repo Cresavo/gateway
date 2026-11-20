@@ -29,6 +29,14 @@ The owner chose to run the demo as its own project in the same Vercel team as th
 - Set the remote flags below, with `GATEWAY_PUBLIC_ORIGIN=https://gateway.cresavo.com` and `GATEWAY_TRUST_PROXY_HOPS=1` (Vercel sends the client address in `X-Forwarded-For`).
 - Host pinning refuses Vercel's own `*.vercel.app` deployment URLs. Only the custom domain serves requests, plus `/healthz`.
 
+### Cost safety
+
+The demo must never cost more than the plan already paid for. When a quota runs out it stops working; nothing is billed beyond it.
+
+- Use only Marketplace plans that are free and need no payment method, for Redis and for any provider database.
+- Give the gateway project a Vercel per-project budget with **pause production** enabled.
+- Out-of-quota behaviour is safe by design. If the store stops answering, reads continue on per-instance counters and creates are refused with 429. If the provider stops answering, the gateway answers `503 provider_unavailable` and never invents a booking result.
+
 The limiter checks and counts every bucket in one atomic Lua script, so instances never admit more than the limit together. If the store does not answer within 500 ms, reads fall back to the instance's own counters and creates (bookings and proposals) are refused with 429. A store outage never lifts the write limits.
 
 ## Configuration
