@@ -76,7 +76,7 @@ The accepted website API design specifies 60 reads/minute per IP, 600/minute per
 - MCP requests carry exactly one JSON-RPC message. Batches (JSON arrays) and unparsable bodies get 400 before any limit or salon call. The gateway parses the body once (a leading BOM is removed) and forwards the re-serialised message, so the limiter, the scope check and the MCP handler always see the same call.
 - IPv4-mapped IPv6 addresses are unmapped and IPv6 clients are keyed per /64. An invalid `X-Forwarded-For` entry falls back to the socket address.
 - The counter table is capped at 100 000 live keys. When it is full of live windows, new clients get 429 (fail closed) instead of memory growing.
-- Counters are in memory, per process. Run exactly one gateway instance per provider, or move counters to a shared store before scaling out.
+- Counters are in memory, per process, unless `GATEWAY_RATE_LIMIT_REDIS_URL` names a shared Redis-protocol store. With the store, every instance checks and counts atomically in one Lua script. If the store does not answer, reads fall back to per-instance counters and creates are refused with 429. Hosts that may run several instances must set `GATEWAY_REQUIRE_SHARED_LIMITS=1`; the process then refuses to start without a store. The store URL holds a password: it must use TLS (`rediss://`) off loopback, and it is never logged or echoed in errors. Keys hold only the bucket name and the client IP key and expire with their window.
 - Idempotency: booking creation requires `Idempotency-Key`; the salon stores the result. On timeout or 503 the client must retry with the **same** key. Retries count against the gateway's create limit; 5/hour leaves room for normal retries.
 
 ## 6. Untrusted text
@@ -128,14 +128,14 @@ What changes in the threat picture:
 - The gateway is reachable by anyone. Per-IP limits and the proxy's own limits become the first defense; the salon independently enforces stable-client and contact budgets.
 - The service token crosses the internet to the salon. HTTPS is mandatory and redirects stay refused.
 - Logs on the hosting platform must not record `Authorization`, `X-API-Key` or request bodies. Disable request-body logging on the proxy.
-- Run one instance (in-memory counters). Restarting resets counters; the salon's limits still apply.
+- Run one instance with in-memory counters, or any number with the shared store. Restarting resets in-memory counters; the salon's limits still apply.
 - Errors stay generic (`internal_error`); stack traces are never returned.
 
 ## 10. Known gaps before production
 
 1. OAuth 2.1 (PKCE, 15-minute tokens, rotating refresh tokens) is not yet the salon's agent auth; v1 uses provider-issued demo keys.
 2. Single service token; zero-downtime rotation needs the salon to accept two.
-3. Rate-limit counters are per process. The gateway does not verify that the peer is the proxy; that relies on network isolation (an allow-list of proxy addresses is a possible addition).
+3. Without the shared store, rate-limit counters are per process. The gateway does not verify that the peer is the proxy; that relies on network isolation (an allow-list of proxy addresses is a possible addition).
 4. Real SMS delivery and customer identification remain open. The pinned local SMS lab cannot accept a PTS-reserved fictional mobile number. See [the end-to-end evidence](E2E.md).
 5. Direct cancellation remains disabled until a salon cancellation proposal can carry approval.
 

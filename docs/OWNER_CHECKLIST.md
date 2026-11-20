@@ -1,18 +1,18 @@
-# Owner checklist: making the gateway public
+# Owner checklist: the public gateway
 
-Only the repository owner, or a Cresavo organisation owner, can do these steps. Nothing here has been done by automation. Work top to bottom; each block depends on the one before it.
+Only the repository owner, or a Cresavo organisation owner, can do these steps. Nothing here has been done by automation. The repository is already public as `Cresavo/gateway`. Items marked *done* are confirmed; check the rest.
 
-## 1. Decide on history (before anything is public)
+## 1. History and branches
 
-- [ ] Read [`PUBLICATION_AUDIT.md`](PUBLICATION_AUDIT.md), finding 1. Choose option A (accept), B (fresh repository, recommended) or C (rewrite in place).
+- [x] *Done:* finding 1 in [`PUBLICATION_AUDIT.md`](PUBLICATION_AUDIT.md) is settled as option A, because the repository went public. Do not rewrite history now.
 - [ ] In your GitHub email settings, turn on "Keep my email addresses private" and "Block command line pushes that expose my email". Do this before merging anything else in the web UI.
 - [ ] Move the landing-page work (pull requests 1 and 6, branches `site/*` and `feat/landing-page`) to the website's repository, or confirm it can be dropped.
 - [ ] Close Dependabot pull request 3 (Node 26). Review and merge pull requests 4 and 5 if wanted.
 - [ ] Delete merged and superseded branches: `chore/prepare-public-release`, `docs/public-readiness`, `fix/gateway-service-auth`, `night/gateway-salon-integration`, `docs/separate-customer-consent-contract`, and the four site branches once they have moved.
 
-## 2. Create or transfer the repository
+## 2. Repository
 
-- [ ] Option B: create the empty public repository `Cresavo/gateway` in the organisation, push the cleaned `main`, and archive `niclasvestlund-YT/booking-lab-gateway`. Option A or C: Settings → Danger zone → Transfer to `Cresavo`, rename to `gateway`, then change visibility to public.
+- [x] *Done:* transferred and public as `Cresavo/gateway`.
 - [ ] Set the description and topics (for example `mcp`, `booking`, `agpl`) and link the website.
 - [ ] Confirm that GitHub shows the license as AGPL-3.0.
 
@@ -36,12 +36,21 @@ Only the repository owner, or a Cresavo organisation owner, can do these steps. 
 - [ ] A hosted demo needs one new service token, generated on your own machine, for that environment only. Store it in the host's secret store for the gateway and the demo engine. Never put it in GitHub, chat, issues or logs.
 - [ ] Optional: a GitHub environment `demo` with required reviewers, if a deploy workflow is added later.
 
-## 6. Domains and hosting (only after the demo engine exists)
+## 6. Hosted demo on Vercel (separate approval)
 
-- [ ] Choose subdomains under a domain you control, for example `gateway.<demo domain>` and `engine.<demo domain>`. Create DNS records at your registrar and HTTPS on the host.
-- [ ] Deploy a Cresavo engine in split mode with a managed PostgreSQL seeded with fictional data ([`HOSTING.md`](HOSTING.md#prerequisite-a-public-split-mode-provider)).
-- [ ] Deploy this image with exactly one instance and the remote flags from `HOSTING.md`. Turn off request-body and header logging on the host.
-- [ ] Check `https://gateway.<demo domain>/healthz` and `/.well-known/usp`. Then run one booking through an assistant with fictional data.
+Follow Cresavo's `docs/DEPLOY_SANDBOX.md` for the sandbox and [`HOSTING.md`](HOSTING.md#vercel-container-runtime) for the gateway. Two projects in the existing Vercel team.
+
+- [ ] Sandbox project: free PostgreSQL and free Redis from the Marketplace, with no payment method attached. Production environment variables as the guide lists them.
+- [ ] Gateway project: import `Cresavo/gateway`; `vercel.json` selects the container preset. Set `SALON_ORIGIN` (sandbox origin, HTTPS), `GATEWAY_PUBLIC_ORIGIN=https://gateway.cresavo.com`, `GATEWAY_TRUST_PROXY_HOPS=1`, `GATEWAY_REQUIRE_SHARED_LIMITS=1`, and `GATEWAY_RATE_LIMIT_REDIS_URL` (a separate free Redis, `rediss://`).
+- [ ] Generate one new service token on your own machine and enter it in both projects yourself, as `GATEWAY_SERVICE_TOKEN`. Never in Git, chat or issues.
+- [ ] A per-project budget with **pause production** on both projects.
+- [ ] Domains: `gateway.cresavo.com` on the gateway project, and the sandbox's domain on the sandbox project, with DNS at the registrar. The gateway refuses `*.vercel.app` hosts by design.
+- [ ] Live test before merging Cresavo 90–93:
+  - `GET https://gateway.cresavo.com/healthz` and `/.well-known/usp`
+  - `npm run provider:check -- --write` against the sandbox, from your own machine, with the service token only in your shell environment
+  - `npm run test:e2e -- --gateway https://gateway.cresavo.com --adapter <sandbox hosted adapter>` with an ordinary sandbox agent key ([`CONNECT_A_PROVIDER.md`](CONNECT_A_PROVIDER.md)). Hosted mode does not cover price change, slot taken or expiry; those stay covered by the local real run.
+  - approval on the demo phone, and the same booking ID in the sandbox calendar
+- [ ] Check that the sandbox caps hold through the gateway (see the topology note on client addresses in `HOSTING.md`).
 - [ ] Update the README "Demo status" line.
 
 ## 7. Release (optional)

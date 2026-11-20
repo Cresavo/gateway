@@ -23,10 +23,11 @@ export function loadConfig(env = process.env) {
     throw new Error("GATEWAY_ALLOW_REMOTE must be 0 or 1");
   const hops = Number(env.GATEWAY_TRUST_PROXY_HOPS || 0);
   if (!Number.isInteger(hops) || hops < 0 || hops > 5) throw new Error("GATEWAY_TRUST_PROXY_HOPS must be 0 to 5");
+  const store = rateLimitStore(env, remote);
   if (!remote) {
     if (!LOOPBACK.has(host)) throw new Error("Non-loopback GATEWAY_LISTEN_HOST requires GATEWAY_ALLOW_REMOTE=1");
     if (env.GATEWAY_PUBLIC_ORIGIN || hops) throw new Error("GATEWAY_PUBLIC_ORIGIN and proxy hops require GATEWAY_ALLOW_REMOTE=1");
-    return { port, host, salon: env.SALON_ORIGIN, serviceToken: env.GATEWAY_SERVICE_TOKEN, options: {} };
+    return { port, host, salon: env.SALON_ORIGIN, serviceToken: env.GATEWAY_SERVICE_TOKEN, options: { ...store } };
   }
   if (!LOOPBACK.has(host) && !WILDCARD.has(host)) throw new Error("GATEWAY_LISTEN_HOST must be loopback, 0.0.0.0 or ::");
   if (!env.GATEWAY_PUBLIC_ORIGIN) throw new Error("GATEWAY_ALLOW_REMOTE=1 requires GATEWAY_PUBLIC_ORIGIN");
@@ -35,8 +36,27 @@ export function loadConfig(env = process.env) {
   if (salon.protocol !== "https:") throw new Error("GATEWAY_ALLOW_REMOTE=1 requires an https:// SALON_ORIGIN");
   return {
     port, host, salon: env.SALON_ORIGIN, serviceToken: env.GATEWAY_SERVICE_TOKEN,
-    options: { publicOrigin: publicOrigin(env.GATEWAY_PUBLIC_ORIGIN), trustProxyHops: hops },
+    options: { publicOrigin: publicOrigin(env.GATEWAY_PUBLIC_ORIGIN), trustProxyHops: hops, ...store },
   };
+}
+
+// Shared rate-limit store. Required wherever more than one instance can run
+// (GATEWAY_REQUIRE_SHARED_LIMITS=1, or automatically on Vercel). The URL holds a
+// password: it is validated here and never logged or echoed in errors.
+function rateLimitStore(env, remote) {
+  const value = env.GATEWAY_RATE_LIMIT_REDIS_URL;
+  const required = env.GATEWAY_REQUIRE_SHARED_LIMITS === "1" || Boolean(env.VERCEL);
+  if (!value) {
+    if (required) throw new Error("Shared rate limits are required here: set GATEWAY_RATE_LIMIT_REDIS_URL");
+    return {};
+  }
+  let url;
+  try { url = new URL(value); } catch { throw new Error("GATEWAY_RATE_LIMIT_REDIS_URL is not a valid URL"); }
+  const local = LOOPBACK.has(url.hostname) || url.hostname === "[::1]";
+  if (!(url.protocol === "rediss:" || (url.protocol === "redis:" && local)))
+    throw new Error("GATEWAY_RATE_LIMIT_REDIS_URL must use rediss://, or redis:// on loopback");
+  if (remote && !local && url.protocol !== "rediss:") throw new Error("Remote mode needs TLS to the rate-limit store");
+  return { rateLimitStoreUrl: value };
 }
 
 // The client key used for rate limiting. With N trusted proxy hops the

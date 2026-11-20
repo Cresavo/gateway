@@ -4,50 +4,65 @@ Goal: run the gateway beyond loopback, behind HTTPS, against the public Cresavo 
 
 ## Prerequisite: a public split-mode provider
 
-The gateway needs a Cresavo provider running in split mode (`BOOKING_SERVICE_ROLE=salon`) that answers `GET /api/v1/access` with `providerMode: "split"`. That provider is the Cresavo engine: Next.js with PostgreSQL and the same service token.
+The gateway needs a provider in split mode that answers `GET /api/v1/access` with `providerMode: "split"`. For the hosted demo this is the Cresavo **sandbox**: the Cresavo engine with its own PostgreSQL and Redis, fictional data only, a nightly reset, and a private demo phone for customer consent. It is built in Cresavo pull requests 90–93 and described in Cresavo's `docs/DEPLOY_SANDBOX.md`. Until it is deployed, no public split-mode provider exists.
 
-**This does not exist publicly today.** `https://demo.cresavo.com` serves the browser-only concept demo (`/studio`, `/boka/salong-eko`) without a database. It has no v1 agent API in split mode. Cresavo's `docs/DEPLOY_DEMO.md` notes that the engine still needs a deployment plan. A public gateway demo therefore needs one of:
-
-1. **Recommended:** a demo engine deployment of Cresavo next to the gateway. It runs on the same container host, with a managed PostgreSQL holding only seeded fictional data, the consent delivery set to the synthetic separate channel, and one service token shared by the two services. The gateway reaches it over HTTPS (`SALON_ORIGIN=https://<engine demo origin>`).
-2. The gateway is not hosted publicly until (1) exists. Assistants connect to a local gateway on loopback, as in the quickstart.
-
-Pointing `SALON_ORIGIN` at the concept demo fails closed: without a successful split confirmation from `GET /api/v1/access`, no operation is forwarded. Clients get an error (502 `provider_invalid_response`, 503 `provider_configuration_invalid` or the provider's own 4xx), never a booking result.
+`https://demo.cresavo.com` is not a provider. It serves the browser-only concept demo (`/studio`, `/boka/salong-eko`) without a database. Pointing `SALON_ORIGIN` at it fails closed: without a successful split confirmation from `GET /api/v1/access`, no operation is forwarded. Clients get an error (502 `provider_invalid_response`, 503 `provider_configuration_invalid` or the provider's own 4xx), never a booking result.
 
 ## Options
 
 | | Serverless functions (e.g. Vercel) | Small container host (one instance) | Self-managed VM |
 | --- | --- | --- | --- |
-| Fit with the code | Needs an adapter from `node:http` to a fetch handler | Runs `node src/server.js` unchanged | Unchanged |
-| In-memory rate limits | Broken: each invocation may be a new instance, so per-IP limits stop working without an external store | Works with one instance | Works |
+| Fit with the code | Vercel's container runtime builds the same `Dockerfile` (`vercel.json`: `"framework": "container"`) | Runs `node src/server.js` unchanged | Unchanged |
+| Rate limits | Need the shared Redis store (`GATEWAY_RATE_LIMIT_REDIS_URL`): instances scale out | In memory with one instance, or the shared store | Works |
 | Streamable HTTP MCP | JSON responses work; long-lived GET/SSE streams hit function time limits | Works | Works |
 | Cold starts on every access check chain | Yes, adds latency to each MCP call (access check + operation) | No | No |
 | TLS and HTTPS | Built in | Built in on most hosts | Operator runs a proxy and certificates |
 | Operations effort | Lowest | Low | Highest |
 | Cost for a demo | Free tier possible | Low fixed cost | Low fixed cost, more time |
 
-## Decision
+## Decision (original)
 
 **A small container host running exactly one instance**, with TLS terminated by the host's proxy. It runs the same entry point as local development, keeps in-memory per-IP limits correct, and supports every MCP transport mode. Serverless functions would need an external rate-limit store and a request adapter, which adds moving parts for no gain at demo scale.
 
 Any host that runs a Docker image, gives HTTPS on a custom domain, and can pin the instance count to one, works. The repository does not depend on a particular vendor.
 
-Vercel stays the right home for the Cresavo concept demo and the website. Only the gateway, which needs one long-lived process, goes on the container host.
+## Vercel (container runtime)
 
-### Proposed demo topology
+The owner chose to run the demo as its own project in the same Vercel team as the Cresavo site. The same `Dockerfile` serves every host; `vercel.json` only selects the container preset. Vercel may run several instances, so shared rate limits are mandatory there:
+
+- Set `GATEWAY_RATE_LIMIT_REDIS_URL` to a `rediss://` URL (any Redis-protocol store: Redis, Valkey, a Vercel Marketplace Redis integration). It is a secret.
+- Set `GATEWAY_REQUIRE_SHARED_LIMITS=1`. The process also requires the store when it sees Vercel's `VERCEL` variable, but the explicit flag does not depend on that.
+- Set the remote flags below, with `GATEWAY_PUBLIC_ORIGIN=https://gateway.cresavo.com` and `GATEWAY_TRUST_PROXY_HOPS=1` (Vercel sends the client address in `X-Forwarded-For`).
+- Host pinning refuses Vercel's own `*.vercel.app` deployment URLs. Only the custom domain serves requests, plus `/healthz`.
+
+### Cost safety
+
+The demo must never cost more than the plan already paid for. When a quota runs out it stops working; nothing is billed beyond it.
+
+- Use only Marketplace plans that are free and need no payment method, for Redis and for any provider database.
+- Give the gateway project a Vercel per-project budget with **pause production** enabled.
+- Out-of-quota behaviour is safe by design. If the store stops answering, reads continue on per-instance counters and creates are refused with 429. If the provider stops answering, the gateway answers `503 provider_unavailable` and never invents a booking result.
+
+The limiter checks and counts every bucket in one atomic Lua script, so instances never admit more than the limit together. If the store does not answer within 500 ms, reads fall back to the instance's own counters and creates (bookings and proposals) are refused with 429. A store outage never lifts the write limits.
+
+### Demo topology
 
 ```
-assistant ──HTTPS──▶ gateway.<demo domain>  (container, 1 instance, this image)
-                          │ HTTPS, x-booking-gateway-token
+assistant ──HTTPS──▶ gateway.cresavo.com    (Vercel project 1: this Dockerfile, container preset)
+                          │ HTTPS, x-booking-gateway-token + agent key
+                          │                   └─ shared Redis (free plan): gateway rate limits
                           ▼
-                     engine.<demo domain>   (Cresavo engine, split mode, 1 instance)
-                          │ private network
+                     sandbox provider        (Vercel project 2: Cresavo engine, split mode)
+                          │                   ├─ PostgreSQL (free plan): fictional data, nightly reset
+                          │                   └─ Redis (free plan): sandbox caps
                           ▼
-                     managed PostgreSQL      (seeded fictional data only, reset on schedule)
+                     demo phone              (consent page on the sandbox origin, never via the gateway)
 ```
 
-- Separate subdomains, so the gateway's Host/Origin pinning and the salon's consent origin never overlap.
-- A service token exists only in this demo environment and is stored in the host's secret store for both services.
-- A scheduled reset re-seeds the demo database, so stray demo bookings never accumulate.
+- Two projects in the same Vercel team, each with its own budget and **pause production**, and separate custom domains. The gateway's Host/Origin pinning and the sandbox's consent origin never overlap.
+- One service token, used only by this pair. It lives in both projects' production environment variables and nowhere else. Rotation means updating both and redeploying both.
+- The gateway's Redis and the sandbox's Redis are separate stores, so one quota running out cannot lift the other's limits.
+- The gateway does not forward the agent's address to the provider. It applies its own per-IP limits and then calls the sandbox from Vercel's egress addresses. Sandbox caps keyed on IP therefore only work for requests that reach the sandbox directly, such as a person requesting a demo key and phone in the browser. For traffic through the gateway, the sandbox's per-key and per-session caps apply.
 
 ## Configuration
 
@@ -62,6 +77,8 @@ All flags are explicit. Without them the gateway binds to `127.0.0.1` and refuse
 | `GATEWAY_LISTEN_HOST` | `127.0.0.1` | `0.0.0.0` (inside the container) |
 | `GATEWAY_PUBLIC_ORIGIN` | must be unset | `https://<gateway domain>` |
 | `GATEWAY_TRUST_PROXY_HOPS` | must be unset or `0` | `1` for one proxy in front |
+| `GATEWAY_RATE_LIMIT_REDIS_URL` | optional, `redis://` on loopback | `rediss://…`, required with more than one instance. Secret. |
+| `GATEWAY_REQUIRE_SHARED_LIMITS` | unset | `1` where the host may run several instances |
 
 Locally, use `127.0.0.1`, not `localhost`: the Host check accepts only the exact origin.
 
@@ -85,7 +102,7 @@ docker run --rm -p 3218:3218 \
 ## Host requirements
 
 1. HTTPS only, HTTP redirected to HTTPS by the host.
-2. Instance count pinned to 1; no autoscaling.
+2. Instance count pinned to 1, unless `GATEWAY_RATE_LIMIT_REDIS_URL` points at a shared store.
 3. The proxy forwards the original `Host` header (lowercase, no trailing dot) and appends exactly one `X-Forwarded-For` entry. The container port is reachable only by the proxy, never published to the internet.
 4. Request logging without headers and bodies.
 5. The service token stored in the host's secret store, distinct from every other environment.

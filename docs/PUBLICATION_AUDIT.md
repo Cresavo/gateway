@@ -43,8 +43,10 @@ This document does not repeat secret values or personal contact details. Where a
 | B. Fresh public repository | Create an empty `Cresavo/gateway`. Push a `main` whose two merge commits are re-authored with the noreply address (for example with `git filter-repo --mailmap`). Keep this private repository archived. Pull requests, branches and `refs/pull/*` are not carried over. | Yes, on a new repository only | No (first push into an empty repository) |
 | C. Rewrite in place | Rewrite `main` here, then transfer. `835a0d0` and every later commit on `main` get new IDs. Open pull requests break, and `refs/pull/*` still hold the old commits. | Yes | Yes |
 
-Recommendation: **B**. It also resolves finding 2 and removes `refs/pull/*`. Nothing has been rewritten or force-pushed. The owner decides.
+Recommendation at the time of the audit: **B**. Nothing has been rewritten or force-pushed.
+
+**Status update:** the repository has since been transferred and made public as `Cresavo/gateway`, so option A applies in practice. The address in `835a0d0` and `fad5799` is public. A rewrite now (option C) would not take it back from clones, forks, mirrors or GitHub's own `refs/pull/*`, and it would break every open pull request. It is not recommended. What remains is preventing new exposure: the email privacy settings above, and squash merges in the web UI only after those settings are on.
 
 ## Conclusion
 
-No secrets anywhere in history. One personal-data finding (1) needs the owner's decision before publication. Branch cleanup (2, 5) is the owner's action. The CI `secret-scan` job repeats the full-history gitleaks scan on every pull request.
+No secrets anywhere in history. One personal-data finding (1); the repository is now public, so it is accepted (see the status update). Branch cleanup (2, 5) is the owner's action. The CI `secret-scan` job repeats the full-history gitleaks scan on every pull request.

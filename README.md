@@ -6,6 +6,10 @@ The agent-facing front door for [Cresavo](https://github.com/Cresavo/cresavo) sa
 
 All data in this repository is fictional. The demo salon "Salong Eko" does not exist.
 
+## Connect your booking system
+
+The gateway works with any booking system that implements the [provider contract](docs/PROVIDER_CONTRACT.md). Cresavo is the first. [`docs/CONNECT_A_PROVIDER.md`](docs/CONNECT_A_PROVIDER.md) takes you from a local trial to a conformance check (`npm run provider:check`) and the full agent scenarios against your own system.
+
 ## How it fits Cresavo
 
 ```
@@ -54,6 +58,7 @@ Endpoints on `http://127.0.0.1:3218`:
 
 | Path | What |
 | --- | --- |
+| `/` | Landing page for developers of AI assistants |
 | `/.well-known/usp` | Discovery profile |
 | `/llms.txt` | Short guide for assistants |
 | `/api/v1/openapi` | OpenAPI 3.1 contract |
@@ -74,11 +79,15 @@ Agent credentials go in the `Authorization` header, never in URLs.
 | `GATEWAY_LISTEN_HOST` | `127.0.0.1` | `0.0.0.0` or `::` only in remote mode. |
 | `GATEWAY_PUBLIC_ORIGIN` | unset | Public `https://` origin, required in remote mode. |
 | `GATEWAY_TRUST_PROXY_HOPS` | `0` | Proxies in front that append `X-Forwarded-For`, required (≥ 1) in remote mode. |
+| `GATEWAY_RATE_LIMIT_REDIS_URL` | unset | Redis-protocol store that shares rate limits between instances. `rediss://` off loopback. Secret. |
+| `GATEWAY_REQUIRE_SHARED_LIMITS` | unset | `1` refuses to start without the shared store. Automatic on Vercel. |
 
 The default is loopback only. Remote mode refuses to start unless every remote flag is set correctly. See [`docs/HOSTING.md`](docs/HOSTING.md).
 
 ## Documentation
 
+- [`docs/PROVIDER_CONTRACT.md`](docs/PROVIDER_CONTRACT.md): what a booking system implements to sit behind the gateway
+- [`docs/CONNECT_A_PROVIDER.md`](docs/CONNECT_A_PROVIDER.md): connect your booking system step by step
 - [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md): threat model, tokens, limits, what the gateway never does
 - [`docs/HOSTING.md`](docs/HOSTING.md): hosting options and the chosen setup
 - [`docs/E2E.md`](docs/E2E.md): end-to-end test
@@ -88,7 +97,7 @@ The default is loopback only. Remote mode refuses to start unless every remote f
 
 ## Compatibility
 
-The adapter targets the Cresavo salon v1 contract. Discovery uses the USP profile format and MCP tool-name aliases only; full USP conformance is not claimed. No partner compatibility or assistant certification is implied.
+The gateway speaks [provider contract v1](docs/PROVIDER_CONTRACT.md); Cresavo is the first implementation. Discovery uses the USP profile format and MCP tool-name aliases only; full USP conformance is not claimed. No partner compatibility or assistant certification is implied.
 
 ## License
 
