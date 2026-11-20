@@ -6,6 +6,10 @@ The agent-facing front door for [Cresavo](https://github.com/Cresavo/cresavo) sa
 
 All data in this repository is fictional. The demo salon "Salong Eko" does not exist.
 
+## Connect your booking system
+
+The gateway works with any booking system that implements the [provider contract](docs/PROVIDER_CONTRACT.md). Cresavo is the first. [`docs/CONNECT_A_PROVIDER.md`](docs/CONNECT_A_PROVIDER.md) takes you from a local trial to a conformance check (`npm run provider:check`) and the full agent scenarios against your own system.
+
 ## How it fits Cresavo
 
 ```
@@ -79,6 +83,8 @@ The default is loopback only. Remote mode refuses to start unless every remote f
 
 ## Documentation
 
+- [`docs/PROVIDER_CONTRACT.md`](docs/PROVIDER_CONTRACT.md): what a booking system implements to sit behind the gateway
+- [`docs/CONNECT_A_PROVIDER.md`](docs/CONNECT_A_PROVIDER.md): connect your booking system step by step
 - [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md): threat model, tokens, limits, what the gateway never does
 - [`docs/HOSTING.md`](docs/HOSTING.md): hosting options and the chosen setup
 - [`docs/E2E.md`](docs/E2E.md): end-to-end test
@@ -87,7 +93,7 @@ The default is loopback only. Remote mode refuses to start unless every remote f
 
 ## Compatibility
 
-The adapter targets the Cresavo salon v1 contract. Discovery uses the USP profile format and MCP tool-name aliases only; full USP conformance is not claimed. No partner compatibility or assistant certification is implied.
+The gateway speaks [provider contract v1](docs/PROVIDER_CONTRACT.md); Cresavo is the first implementation. Discovery uses the USP profile format and MCP tool-name aliases only; full USP conformance is not claimed. No partner compatibility or assistant certification is implied.
 
 ## License
 

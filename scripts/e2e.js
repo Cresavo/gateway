@@ -7,12 +7,14 @@ import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:net";
+import { resolve as resolvePath } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { start as startFixture } from "../test/e2e/fixture-provider.js";
 
 const serviceToken = randomBytes(32).toString("hex");
-const customer = { name: "Separat Demokund", email: "separate-customer@example.test" };
+// Defaults for the fixture and Cresavo's separate lab; an adapter may supply its own.
+const defaultCustomer = { name: "Separat Demokund", email: "separate-customer@example.test" };
 const future = new Date(Date.now() + 3 * 86400000);
 while ([0, 6].includes(future.getUTCDay())) future.setUTCDate(future.getUTCDate() + 1);
 const day = future.toISOString().slice(0, 10);
@@ -37,13 +39,20 @@ async function scenario(name, fn) {
 }
 
 async function run() {
+  // --adapter <file> runs the shared scenarios against any provider; see docs/CONNECT_A_PROVIDER.md.
+  // --real is the pinned Cresavo adapter that scripts/real/run.sh installs as E2E_OPERATOR.
   const real = process.argv.includes("--real");
-  const startProvider = real ? (await import(pathToFileURL(process.env.E2E_OPERATOR).href)).start : startFixture;
+  const flag = process.argv.indexOf("--adapter");
+  const adapterPath = flag > 0 ? process.argv[flag + 1] : real ? process.env.E2E_OPERATOR : undefined;
+  if (flag > 0 && !adapterPath) throw new Error("--adapter needs a module path");
+  const startProvider = adapterPath ? (await import(pathToFileURL(resolvePath(adapterPath)).href)).start : startFixture;
   const port = await freePort();
   const gatewayOrigin = "http://127.0.0.1:" + port;
   const provider = await startProvider({ serviceToken, day, salonPort: await freePort(), gatewayOrigin });
   const { salon, agentKey, owner, approve } = provider;
-  log("provider", real ? "Cresavo / PostgreSQL / separate synthetic customer channel" : "fictional separate-channel fixture");
+  const business = provider.business ?? "demo";
+  const customer = provider.customer ?? defaultCustomer;
+  log("provider", real ? "Cresavo / PostgreSQL / separate synthetic customer channel" : adapterPath ? "adapter " + adapterPath : "fictional separate-channel fixture");
 
   const child = spawn(process.execPath, [fileURLToPath(new URL("../src/server.js", import.meta.url))], {
     env: { PATH: process.env.PATH, PORT: String(port), SALON_ORIGIN: salon, GATEWAY_SERVICE_TOKEN: serviceToken },
@@ -67,28 +76,28 @@ async function run() {
     const tools = (await client.listTools()).tools.map(t => t.name);
     log("mcp", `connected with SDK client; ${tools.length} tools: ${tools.join(", ")}`);
 
-    const catalog = (await call("list_services", { business: "demo" })).body;
+    const catalog = (await call("list_services", { business })).body;
     const service = catalog.services[0];
     async function freeStarts() {
-      const { body } = await call("get_availability", { business: "demo", service: service.id, date: day, staff: service.staff[0].id });
+      const { body } = await call("get_availability", { business, service: service.id, date: day, staff: service.staff[0].id });
       return body.slots.map(slot => slot.start);
     }
     async function propose(start, version = service.version) {
-      const { isError, body } = await call("create_proposal", { business: "demo", serviceId: service.id,
+      const { isError, body } = await call("create_proposal", { business, serviceId: service.id,
         serviceVersion: version, staffId: service.staff[0].id, start });
       if (isError && ["invalid_request", "mandate_denied", "forbidden_scope", "stale_service",
         "service_not_found", "staff_not_found", "provider_unavailable"].includes(body.error?.code))
         log("proposal refused", body.error.code);
       assert.equal(isError, false);
-      assert.deepEqual(Object.keys(body).sort(), ["approvalDelivery", "approvalRequired", "proposal"]);
       assert.equal(body.approvalRequired, true);
-      assert.equal(body.approvalDelivery, "separate-synthetic-customer");
+      // The provider delivers approval to the customer; the agent never holds a link or token.
+      assert.ok(!/approvalUrl|\/consent\/|token/i.test(JSON.stringify(body)), "no approval link reaches the agent");
       assert.equal(body.proposal.status, "pending");
       assert.ok(!("mandateId" in body.proposal));
       return body.proposal;
     }
     const book = (start, mandateId, idempotencyKey = randomUUID()) => call("create_booking", {
-      idempotencyKey, business: "demo", serviceId: service.id, serviceVersion: service.version,
+      idempotencyKey, business, serviceId: service.id, serviceVersion: service.version,
       staffId: service.staff[0].id, start, customer, confirmed: true, mandateId,
     });
 
@@ -155,7 +164,7 @@ async function run() {
       lastProposal = await propose(starts[0]); // fifth proposal from this IP in the window
       const before = (await owner("stats")).stats.proposalsCreated;
       const rpc = { jsonrpc: "2.0", id: 99, method: "tools/call", params: { name: "create_proposal", arguments: {
-        business: "demo", serviceId: service.id, serviceVersion: service.version, staffId: service.staff[0].id, start: starts[1] } } };
+        business, serviceId: service.id, serviceVersion: service.version, staffId: service.staff[0].id, start: starts[1] } } };
       const response = await fetch(gatewayOrigin + "/api/v1/mcp", { method: "POST", body: JSON.stringify(rpc), headers: {
         authorization: "Bearer " + agentKey, "content-type": "application/json", accept: "application/json, text/event-stream",
         "mcp-protocol-version": "2025-06-18" } });
