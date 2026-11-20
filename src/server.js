@@ -13,11 +13,12 @@ import { clientAddress, loadConfig } from "./config.js";
 // options.publicOrigin: the https origin clients use (remote mode only).
 // options.trustProxyHops: proxies in front of the gateway that append X-Forwarded-For.
 // options.rateLimitStoreUrl: Redis URL that shares limits between instances.
+// options.rateLimitKeySecret: HMAC key so the store never sees client addresses.
 // options.limits / options.now / options.take: test seams for the rate limiter.
 export function gateway(salon, serviceToken, options = {}) {
   const provider = connectProvider(salon, serviceToken);
   const take = options.take ?? (options.rateLimitStoreUrl
-    ? sharedRateLimiter(options.rateLimitStoreUrl, { limits: options.limits ?? defaultLimits })
+    ? sharedRateLimiter(options.rateLimitStoreUrl, { limits: options.limits ?? defaultLimits, keySecret: options.rateLimitKeySecret })
     : rateLimiter(options.limits ?? defaultLimits, options.now));
   const hops = options.trustProxyHops ?? 0;
   return createServer(async (req, res) => {
