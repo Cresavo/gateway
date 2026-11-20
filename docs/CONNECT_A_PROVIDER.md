@@ -73,6 +73,28 @@ npm run test:e2e -- --adapter ./my-adapter.mjs
 
 `scripts/real/operator.mjs` is the adapter for Cresavo, a complete working example against a real database.
 
+To verify an already deployed **test** gateway, use the same command with an
+explicit gateway origin:
+
+```sh
+npm run test:e2e -- --gateway https://gateway.example.test --adapter ./my-adapter.mjs
+```
+
+In this mode export `startHosted({ day, gatewayOrigin })` from the adapter.
+Have it obtain a fresh ordinary test agent key and return `agentKey`,
+`approve(proposal)`, `calendar({ bookingId, start })` and `close()`. As
+with `start()`, `business` and `customer` are optional. Use the provider's
+customer interface for approval and its session calendar to return
+`{ bookings: [{ id }] }`. Choose a fresh test session with a bookable slot
+on `day`. Keep credentials out of arguments, files, and test output.
+
+Hosted mode never starts a gateway or supplies a service token. It exercises
+the ordinary agent and customer path, including refusal before approval,
+invalid mandates, idempotent replay and the calendar result. The local suite
+covers scenarios that need control of the provider's state or a fresh
+gateway limit window, such as changing a price, taking a slot, or expiring a
+proposal. Those scenarios do not need privileged routes on the hosted provider.
+
 ## 5. Run the gateway in front of your system
 
 ```sh
