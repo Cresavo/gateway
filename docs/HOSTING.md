@@ -62,7 +62,7 @@ assistant ──HTTPS──▶ gateway.cresavo.com    (Vercel project 1: this Do
 - Two projects in the same Vercel team, each with its own budget and **pause production**, and separate custom domains. The gateway's Host/Origin pinning and the sandbox's consent origin never overlap.
 - One service token, used only by this pair. It lives in both projects' production environment variables and nowhere else. Rotation means updating both and redeploying both.
 - The gateway's Redis and the sandbox's Redis are separate stores, so one quota running out cannot lift the other's limits.
-- The gateway does not forward the agent's address to the provider. It applies its own per-IP limits and then calls the sandbox from Vercel's egress addresses. Sandbox caps keyed on IP therefore only work for requests that reach the sandbox directly, such as a person requesting a demo key and phone in the browser. For traffic through the gateway, the sandbox's per-key and per-session caps apply.
+- The gateway does not forward the agent's address to the provider. It applies its own per-IP limits and calls the sandbox from Vercel's egress addresses. That matches the sandbox design (Cresavo pull requests 91–93): the per-IP cap (3 pairings per UTC day, keyed on Vercel's `x-real-ip`) applies only to browser pairing at the sandbox. Pairing refuses requests that carry `x-booking-gateway-token` or an agent credential. Traffic through the gateway is limited per sandbox session (20 bookings, 256 calls; each gateway operation costs two calls because of the access check). Do not put another proxy, such as a CDN, in front of the sandbox: `x-real-ip` would then be that proxy's address.
 
 ## Configuration
 
