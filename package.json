@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -p .",
     "build": "node --check src/server.js && node --check src/provider.js && node --check src/mcp.js && node --check src/mcp-inputs.js && node --check src/limits.js && node --check src/config.js",
-    "test:e2e:real": "bash scripts/real/run.sh"
+    "test:e2e:real": "bash scripts/real/run.sh",
+    "provider:check": "node scripts/provider-check.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",
