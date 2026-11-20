@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Documentation
+
+- `docs/HOSTING.md` records the hosted demo as configured: project, region, deployment protection, port, provider placeholder, store plan limits, production-only secrets, and how instance scaling interacts with the store's connection limit. README states that the gateway is live and that booking tools answer 503 until the sandbox exists.
+
 ### Added
 
 - Landing page for developers of AI assistants at `/`, served by the gateway itself. It is static and script-free, and sends a strict Content-Security-Policy. It advertises the configured public origin.
