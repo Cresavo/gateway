@@ -2,6 +2,8 @@
 
 The agent-facing front door for [Cresavo](https://github.com/Cresavo/cresavo) salons. It lets AI assistants find a salon's services and free times and book them, through a REST v1 API and a Streamable HTTP MCP server, while every decision stays with the salon.
 
+**Demo status:** This project is in the demo phase and is not production-ready. A public demo is not yet available; hosting and DNS still need to be configured. See the [known gaps before production](docs/SECURITY_MODEL.md#10-known-gaps-before-production).
+
 All data in this repository is fictional. The demo salon "Salong Eko" does not exist.
 
 ## How it fits Cresavo
@@ -10,7 +12,7 @@ All data in this repository is fictional. The demo salon "Salong Eko" does not e
 AI assistant ──▶ gateway (this repo)                ──▶ Cresavo salon provider (Cresavo/cresavo)
                  REST v1, MCP, tool schemas,            database, calendar, prices, agent auth,
                  discovery, OpenAPI, rate limits        customer consent, bookings
-                 no database, stores nothing
+                 no customer database; rate-limit counters in memory
 ```
 
 - Bookings are **propose and approve**: the assistant proposes, the customer approves on the salon's consent page, and the salon books only within what the customer approved (service, staff, time, duration, price).
