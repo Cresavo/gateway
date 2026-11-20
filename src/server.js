@@ -43,6 +43,11 @@ export function gateway(salon, serviceToken, options = {}) {
         return await send(errorReply(400, "invalid_request", "Invalid request target."));
       const url = new URL(req.url, origin);
       const ip = clientAddress(req, hops);
+      if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/assets/site.css")) {
+        const verdict = await take(ip, ["read"]);
+        if (!verdict.ok) return await send(limited(verdict.retryAfter));
+        return await send(await sitePage(url.pathname, origin));
+      }
       if (req.method === "GET" && ["/.well-known/usp", "/llms.txt", "/api/v1/openapi"].includes(url.pathname)) {
         const verdict = await take(ip, ["read"]);
         if (!verdict.ok) return await send(limited(verdict.retryAfter));
@@ -88,6 +93,20 @@ export function gateway(salon, serviceToken, options = {}) {
       res.end();
     }
   });
+}
+
+// Static, script-free landing page. The only substitution is the gateway's own
+// configured origin, never request input, and it is HTML-escaped regardless.
+const SITE_CSP = "default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+const escapeHtml = value => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+async function sitePage(pathname, origin) {
+  const headers = { "content-security-policy": SITE_CSP, "referrer-policy": "no-referrer", "cache-control": "public, max-age=300" };
+  if (pathname === "/assets/site.css") {
+    const css = await readFile(new URL("../site/site.css", import.meta.url));
+    return new Response(css, { headers: { ...headers, "content-type": "text/css; charset=utf-8" } });
+  }
+  const html = (await readFile(new URL("../site/index.html", import.meta.url), "utf8")).replaceAll("{{ORIGIN}}", escapeHtml(origin));
+  return new Response(html, { headers: { ...headers, "content-type": "text/html; charset=utf-8" } });
 }
 
 function limited(retryAfter) {

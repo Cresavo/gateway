@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- Landing page for developers of AI assistants at `/`, served by the gateway itself. It is static and script-free, and sends a strict Content-Security-Policy. It advertises the configured public origin.
 - Optional shared rate limits through any Redis-protocol store (`GATEWAY_RATE_LIMIT_REDIS_URL`), atomic across instances. Creates fail closed when the store is unreachable. Required with `GATEWAY_REQUIRE_SHARED_LIMITS=1` and on Vercel.
 - `vercel.json` selects Vercel's container runtime for the existing `Dockerfile`.
 

@@ -101,3 +101,14 @@ test("shared limits are required on Vercel and the store URL is validated withou
   assert.deepEqual(loadConfig({ SALON_ORIGIN: "http://127.0.0.1:3217" }).options, {});
 });
 
+
+test("every route awaits the limiter, so an asynchronous store serves pages and limits them", async t => {
+  const seen = [];
+  const take = async (ip, buckets) => { seen.push(buckets.join("+")); await new Promise(r => setTimeout(r, 5)); return seen.length > 3 ? { ok: false, retryAfter: 7 } : { ok: true }; };
+  const base = await listen(t, gateway("http://127.0.0.1:1", serviceToken, { take }));
+  for (const path of ["/", "/assets/site.css", "/.well-known/usp"]) assert.equal((await fetch(base + path)).status, 200, path);
+  const limited = await fetch(base + "/llms.txt");
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("retry-after"), "7");
+  assert.deepEqual(seen, ["read", "read", "read", "read"]);
+});
