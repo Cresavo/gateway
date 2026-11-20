@@ -24,6 +24,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - name: Install Redis for the shared rate-limit tests
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
       - run: npm test
       - run: npm run test:e2e
 

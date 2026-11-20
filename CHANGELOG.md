@@ -6,6 +6,9 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- Optional shared rate limits through any Redis-protocol store (`GATEWAY_RATE_LIMIT_REDIS_URL`), atomic across instances. Creates fail closed when the store is unreachable. Required with `GATEWAY_REQUIRE_SHARED_LIMITS=1` and on Vercel.
+- `vercel.json` selects Vercel's container runtime for the existing `Dockerfile`.
+
 - Per-client-IP rate limits in the gateway before any salon call: 60 requests/min, 5 booking creates/hour, 5 proposal creates/hour. All answer 429 with `Retry-After`.
 - Explicit remote mode behind HTTPS: `GATEWAY_ALLOW_REMOTE`, `GATEWAY_LISTEN_HOST`, `GATEWAY_PUBLIC_ORIGIN`, `GATEWAY_TRUST_PROXY_HOPS`. Loopback stays the default; partial setups refuse to start.
 - MCP requests must carry one JSON-RPC message; batches get 400. The body is parsed once and re-serialised before rate limiting and dispatch.

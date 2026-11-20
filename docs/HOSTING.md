@@ -6,19 +6,30 @@ Goal: run the gateway beyond loopback, behind HTTPS, against the public Cresavo 
 
 | | Serverless functions (e.g. Vercel) | Small container host (one instance) | Self-managed VM |
 | --- | --- | --- | --- |
-| Fit with the code | Needs an adapter from `node:http` to a fetch handler | Runs `node src/server.js` unchanged | Unchanged |
-| In-memory rate limits | Broken: each invocation may be a new instance, so per-IP limits stop working without an external store | Works with one instance | Works |
+| Fit with the code | Vercel's container runtime builds the same `Dockerfile` (`vercel.json`: `"framework": "container"`) | Runs `node src/server.js` unchanged | Unchanged |
+| Rate limits | Need the shared Redis store (`GATEWAY_RATE_LIMIT_REDIS_URL`): instances scale out | In memory with one instance, or the shared store | Works |
 | Streamable HTTP MCP | JSON responses work; long-lived GET/SSE streams hit function time limits | Works | Works |
 | Cold starts on every access check chain | Yes, adds latency to each MCP call (access check + operation) | No | No |
 | TLS and HTTPS | Built in | Built in on most hosts | Operator runs a proxy and certificates |
 | Operations effort | Lowest | Low | Highest |
 | Cost for a demo | Free tier possible | Low fixed cost | Low fixed cost, more time |
 
-## Decision
+## Decision (original)
 
 **A small container host running exactly one instance**, with TLS terminated by the host's proxy. It runs the same entry point as local development, keeps in-memory per-IP limits correct, and supports every MCP transport mode. Serverless functions would need an external rate-limit store and a request adapter, which adds moving parts for no gain at demo scale.
 
 Any host that runs a Docker image, gives HTTPS on a custom domain, and can pin the instance count to one, works. The repository does not depend on a particular vendor.
+
+## Vercel (container runtime)
+
+The owner chose to run the demo as its own project in the same Vercel team as the Cresavo site. The same `Dockerfile` serves every host; `vercel.json` only selects the container preset. Vercel may run several instances, so shared rate limits are mandatory there:
+
+- Set `GATEWAY_RATE_LIMIT_REDIS_URL` to a `rediss://` URL (any Redis-protocol store: Redis, Valkey, a Vercel Marketplace Redis integration). It is a secret.
+- Set `GATEWAY_REQUIRE_SHARED_LIMITS=1`. The process also requires the store when it sees Vercel's `VERCEL` variable, but the explicit flag does not depend on that.
+- Set the remote flags below, with `GATEWAY_PUBLIC_ORIGIN=https://gateway.cresavo.com` and `GATEWAY_TRUST_PROXY_HOPS=1` (Vercel sends the client address in `X-Forwarded-For`).
+- Host pinning refuses Vercel's own `*.vercel.app` deployment URLs. Only the custom domain serves requests, plus `/healthz`.
+
+The limiter checks and counts every bucket in one atomic Lua script, so instances never admit more than the limit together. If the store does not answer within 500 ms, reads fall back to the instance's own counters and creates (bookings and proposals) are refused with 429. A store outage never lifts the write limits.
 
 ## Configuration
 
@@ -33,6 +44,8 @@ All flags are explicit. Without them the gateway binds to `127.0.0.1` and refuse
 | `GATEWAY_LISTEN_HOST` | `127.0.0.1` | `0.0.0.0` (inside the container) |
 | `GATEWAY_PUBLIC_ORIGIN` | must be unset | `https://<gateway domain>` |
 | `GATEWAY_TRUST_PROXY_HOPS` | must be unset or `0` | `1` for one proxy in front |
+| `GATEWAY_RATE_LIMIT_REDIS_URL` | optional, `redis://` on loopback | `rediss://…`, required with more than one instance. Secret. |
+| `GATEWAY_REQUIRE_SHARED_LIMITS` | unset | `1` where the host may run several instances |
 
 Locally, use `127.0.0.1`, not `localhost`: the Host check accepts only the exact origin.
 
@@ -56,7 +69,7 @@ docker run --rm -p 3218:3218 \
 ## Host requirements
 
 1. HTTPS only, HTTP redirected to HTTPS by the host.
-2. Instance count pinned to 1; no autoscaling.
+2. Instance count pinned to 1, unless `GATEWAY_RATE_LIMIT_REDIS_URL` points at a shared store.
 3. The proxy forwards the original `Host` header (lowercase, no trailing dot) and appends exactly one `X-Forwarded-For` entry. The container port is reachable only by the proxy, never published to the internet.
 4. Request logging without headers and bodies.
 5. The service token stored in the host's secret store, distinct from every other environment.

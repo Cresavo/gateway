@@ -7,14 +7,18 @@ import { nativeMcpSchema } from "./mcp-inputs.js";
 import { uspProfile, llmsText } from "./discovery.js";
 import { allowedRoute, connectProvider, errorReply } from "./provider.js";
 import { classify, defaultLimits, parseMcpBody, rateLimiter } from "./limits.js";
+import { sharedRateLimiter } from "./shared-limits.js";
 import { clientAddress, loadConfig } from "./config.js";
 
 // options.publicOrigin: the https origin clients use (remote mode only).
 // options.trustProxyHops: proxies in front of the gateway that append X-Forwarded-For.
-// options.limits / options.now: test seams for the rate limiter.
+// options.rateLimitStoreUrl: Redis URL that shares limits between instances.
+// options.limits / options.now / options.take: test seams for the rate limiter.
 export function gateway(salon, serviceToken, options = {}) {
   const provider = connectProvider(salon, serviceToken);
-  const take = rateLimiter(options.limits ?? defaultLimits, options.now);
+  const take = options.take ?? (options.rateLimitStoreUrl
+    ? sharedRateLimiter(options.rateLimitStoreUrl, { limits: options.limits ?? defaultLimits })
+    : rateLimiter(options.limits ?? defaultLimits, options.now));
   const hops = options.trustProxyHops ?? 0;
   return createServer(async (req, res) => {
     async function send(response, authenticated = false) {
@@ -40,7 +44,7 @@ export function gateway(salon, serviceToken, options = {}) {
       const url = new URL(req.url, origin);
       const ip = clientAddress(req, hops);
       if (req.method === "GET" && ["/.well-known/usp", "/llms.txt", "/api/v1/openapi"].includes(url.pathname)) {
-        const verdict = take(ip, ["read"]);
+        const verdict = await take(ip, ["read"]);
         if (!verdict.ok) return await send(limited(verdict.retryAfter));
         if (url.pathname === "/.well-known/usp") return await send(Response.json(uspProfile(origin)));
         if (url.pathname === "/llms.txt")
@@ -68,7 +72,7 @@ export function gateway(salon, serviceToken, options = {}) {
         if (!rpc) return await send(errorReply(400, "invalid_request", "Send one JSON-RPC message per request."));
         body = Buffer.from(JSON.stringify(rpc));
       }
-      const verdict = take(ip, classify(req.method, url.pathname, rpc));
+      const verdict = await take(ip, classify(req.method, url.pathname, rpc));
       if (!verdict.ok) return await send(limited(verdict.retryAfter));
       const headers = new Headers();
       for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);
