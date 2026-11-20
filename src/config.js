@@ -56,7 +56,12 @@ function rateLimitStore(env, remote) {
   if (!(url.protocol === "rediss:" || (url.protocol === "redis:" && local)))
     throw new Error("GATEWAY_RATE_LIMIT_REDIS_URL must use rediss://, or redis:// on loopback");
   if (remote && !local && url.protocol !== "rediss:") throw new Error("Remote mode needs TLS to the rate-limit store");
-  return { rateLimitStoreUrl: value };
+  // Client addresses are personal data: the store only ever sees an HMAC of them.
+  const keySecret = env.GATEWAY_RATE_LIMIT_KEY_SECRET;
+  if (keySecret !== undefined && !/^[\x21-\x7e]{32,256}$/.test(keySecret))
+    throw new Error("GATEWAY_RATE_LIMIT_KEY_SECRET must be 32 to 256 printable characters, e.g. 64 random hex");
+  if (!keySecret && !local) throw new Error("A remote rate-limit store needs GATEWAY_RATE_LIMIT_KEY_SECRET");
+  return keySecret ? { rateLimitStoreUrl: value, rateLimitKeySecret: keySecret } : { rateLimitStoreUrl: value };
 }
 
 // The client key used for rate limiting. With N trusted proxy hops the

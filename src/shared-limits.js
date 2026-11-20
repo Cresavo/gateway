@@ -2,6 +2,7 @@
 // Rate limits shared by every gateway instance through Redis (or any server that
 // speaks the Redis protocol, such as Valkey). Works on Vercel, on a container
 // host or on a single machine. Same windows and semantics as the in-memory limiter.
+import { createHmac } from "node:crypto";
 import { Redis } from "ioredis";
 import { defaultLimits, rateLimiter } from "./limits.js";
 
@@ -27,13 +28,18 @@ for i = 1, #KEYS do
 end
 return 0
 `;
-const PREFIX = "cresavo-gateway:rl:v1:";
+// v2 keys hold a keyed digest of the client address, never the address itself.
+const PREFIX = "cresavo-gateway:rl:v2:";
+// Only for a loopback store in local development; never a secret.
+export const LOCAL_KEY_SECRET = "cresavo-gateway-local-development-only";
 const CREATE_BUCKETS = new Set(["booking_create", "proposal_create"]);
 
 // When the store cannot answer: reads fall back to this instance's own limiter,
 // creates are refused. A store outage must never lift the write limits.
-/** @param {string} url @param {{ limits?: typeof defaultLimits }} [options] */
-export function sharedRateLimiter(url, { limits = defaultLimits } = {}) {
+// keySecret: HMAC key for client addresses. Every instance must use the same value
+// so they share counters; the store never learns the addresses.
+/** @param {string} url @param {{ limits?: typeof defaultLimits, keySecret?: string }} [options] */
+export function sharedRateLimiter(url, { limits = defaultLimits, keySecret = LOCAL_KEY_SECRET } = {}) {
   const redis = new Redis(url, {
     enableOfflineQueue: false, maxRetriesPerRequest: 1, commandTimeout: 500, connectTimeout: 2000,
   });
@@ -41,7 +47,8 @@ export function sharedRateLimiter(url, { limits = defaultLimits } = {}) {
   redis.on("error", () => {});
   const local = rateLimiter(limits);
   async function take(ip, buckets) {
-    const keys = buckets.map(bucket => PREFIX + bucket + ":" + ip);
+    const client = createHmac("sha256", keySecret).update(ip).digest("base64url").slice(0, 22);
+    const keys = buckets.map(bucket => PREFIX + bucket + ":" + client);
     const args = buckets.flatMap(bucket => [limits[bucket].limit, limits[bucket].windowMs]);
     try {
       const retryMs = Number(await redis.eval(TAKE, keys.length, ...keys, ...args));
