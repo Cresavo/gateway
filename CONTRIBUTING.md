@@ -7,7 +7,7 @@ Thanks for helping. This gateway sits between AI assistants and salons, so small
 - Everything in the repository is in English.
 - Fictional data only: `@example.test` emails, the demo salon, phone numbers from ranges reserved for fiction. Never real customers, staff or salons.
 - No secrets in Git, issues, logs or test output. Tests generate their own random tokens.
-- The gateway stores nothing and decides nothing about bookings. Logic about prices, consent, mandates or scheduling belongs in [Cresavo](https://github.com/Cresavo/cresavo).
+- The gateway has no customer database and decides nothing about bookings. It keeps rate-limit counters in memory. Logic about prices, consent, mandates or scheduling belongs in [Cresavo](https://github.com/Cresavo/cresavo).
 - Do not rename env vars, routes, headers or tool names without a migration note in `CHANGELOG.md`.
 
 ## Development
