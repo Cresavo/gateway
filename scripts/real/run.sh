@@ -5,9 +5,16 @@ umask 077
 # Start with a clean environment so an operator's salon, proxy or DB settings
 # cannot select a different target or mode during installation and seeding.
 if [[ ${1:-} != --isolated ]]; then
+  # Network transport settings (egress proxy, extra CA bundle, preinstalled
+  # browsers) pass through only when set. They route downloads; they cannot
+  # change the salon target, mode or database.
+  transport=()
+  for name in HTTPS_PROXY https_proxy NO_PROXY no_proxy NODE_EXTRA_CA_CERTS SSL_CERT_FILE PLAYWRIGHT_BROWSERS_PATH; do
+    if [[ -n ${!name:-} ]]; then transport+=("$name=${!name}"); fi
+  done
   exec env -i LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 PATH="$PATH" HOME="$HOME" TMPDIR="${TMPDIR:-/tmp}" \
     CRESAVO_CHECKOUT="${CRESAVO_CHECKOUT:-}" GITHUB_ACTIONS="${GITHUB_ACTIONS:-}" \
-    E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-}" bash "$0" --isolated
+    E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-}" ${transport[@]+"${transport[@]}"} bash "$0" --isolated
 fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 revision=ffbfc48e2299bb4854eba71698468f9745d61b99
@@ -43,7 +50,7 @@ if [[ -n ${E2E_POSTGRES_PORT:-} ]]; then
 else
   export PGPORT=$(node --input-type=module -e 'import net from "node:net"; const s=net.createServer(); s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')
   openssl rand -hex 32 > "$scratch/password"
-  initdb -D "$scratch/pg" -U postgres --auth-local=scram-sha-256 --auth-host=scram-sha-256 --pwfile="$scratch/password" >/dev/null
+  initdb -D "$scratch/pg" -U postgres --locale=C --encoding=UTF8 --auth-local=scram-sha-256 --auth-host=scram-sha-256 --pwfile="$scratch/password" >/dev/null
   pg_ctl -D "$scratch/pg" -l "$scratch/postgres.log" -o "-h 127.0.0.1 -p $PGPORT -k $scratch" -w start >/dev/null
   started_db=1
   export PGPASSWORD=$(cat "$scratch/password")

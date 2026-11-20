@@ -8,7 +8,9 @@ npm run test:e2e
 npm run test:e2e:real
 ```
 
-The real run needs Node 24, Bash, Git, OpenSSL, a local PostgreSQL installation (`initdb`, `pg_ctl`, `createdb`, `dropdb`) and network access for the pinned public source, npm and Chromium. Run as an ordinary OS user. On Linux, install Playwright's Chromium system dependencies. To reuse a local source checkout, set `CRESAVO_CHECKOUT` to its path. The runner extracts the pinned Git tree into a temporary directory, regardless of local edits, and installs from its lockfile.
+The real run needs Node 24, Bash, Git, OpenSSL, a local PostgreSQL installation (`initdb`, `pg_ctl`, `createdb`, `dropdb`) and network access for the pinned public source, npm and Chromium. Run as an ordinary OS user. On Linux, install Playwright's Chromium system dependencies. To reuse a local source checkout, set `CRESAVO_CHECKOUT` to its path.
+
+The runner clears the environment before it starts. It passes through only its own inputs, plus these network transport settings when they are set: `HTTPS_PROXY`, `NO_PROXY` (either case), `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE` and `PLAYWRIGHT_BROWSERS_PATH`. They let the run work behind an egress proxy or with preinstalled browsers. They cannot choose the salon, mode or database. The private PostgreSQL cluster uses the `C` locale with UTF-8 encoding, so hosts without `en_US.UTF-8` work too. The runner extracts the pinned Git tree into a temporary directory, regardless of local edits, and installs from its lockfile.
 
 Locally the runner starts a private loopback PostgreSQL cluster with a random password. CI supplies a disposable PostgreSQL service bound to the runner's loopback interface. Each run creates its own randomly named `_test` database, migrates it, seeds Salong Eko and builds the provider. The two servers share a fresh service token. The gateway process receives its port, salon origin, PATH and service token. The test operator holds the database connection and manages the separate customer inbox. The runner removes the inbox, database and temporary checkout at exit.
 

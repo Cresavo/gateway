@@ -2,6 +2,17 @@
 
 Goal: run the gateway beyond loopback, behind HTTPS, against the public Cresavo demo provider. Loopback stays the default.
 
+## Prerequisite: a public split-mode provider
+
+The gateway needs a Cresavo provider running in split mode (`BOOKING_SERVICE_ROLE=salon`) that answers `GET /api/v1/access` with `providerMode: "split"`. That provider is the Cresavo engine: Next.js with PostgreSQL and the same service token.
+
+**This does not exist publicly today.** `https://demo.cresavo.com` serves the browser-only concept demo (`/studio`, `/boka/salong-eko`) without a database. It has no v1 agent API in split mode. Cresavo's `docs/DEPLOY_DEMO.md` notes that the engine still needs a deployment plan. A public gateway demo therefore needs one of:
+
+1. **Recommended:** a demo engine deployment of Cresavo next to the gateway. It runs on the same container host, with a managed PostgreSQL holding only seeded fictional data, the consent delivery set to the synthetic separate channel, and one service token shared by the two services. The gateway reaches it over HTTPS (`SALON_ORIGIN=https://<engine demo origin>`).
+2. The gateway is not hosted publicly until (1) exists. Assistants connect to a local gateway on loopback, as in the quickstart.
+
+Pointing `SALON_ORIGIN` at the concept demo fails closed: without a successful split confirmation from `GET /api/v1/access`, no operation is forwarded. Clients get an error (502 `provider_invalid_response`, 503 `provider_configuration_invalid` or the provider's own 4xx), never a booking result.
+
 ## Options
 
 | | Serverless functions (e.g. Vercel) | Small container host (one instance) | Self-managed VM |
@@ -19,6 +30,24 @@ Goal: run the gateway beyond loopback, behind HTTPS, against the public Cresavo 
 **A small container host running exactly one instance**, with TLS terminated by the host's proxy. It runs the same entry point as local development, keeps in-memory per-IP limits correct, and supports every MCP transport mode. Serverless functions would need an external rate-limit store and a request adapter, which adds moving parts for no gain at demo scale.
 
 Any host that runs a Docker image, gives HTTPS on a custom domain, and can pin the instance count to one, works. The repository does not depend on a particular vendor.
+
+Vercel stays the right home for the Cresavo concept demo and the website. Only the gateway, which needs one long-lived process, goes on the container host.
+
+### Proposed demo topology
+
+```
+assistant ──HTTPS──▶ gateway.<demo domain>  (container, 1 instance, this image)
+                          │ HTTPS, x-booking-gateway-token
+                          ▼
+                     engine.<demo domain>   (Cresavo engine, split mode, 1 instance)
+                          │ private network
+                          ▼
+                     managed PostgreSQL      (seeded fictional data only, reset on schedule)
+```
+
+- Separate subdomains, so the gateway's Host/Origin pinning and the salon's consent origin never overlap.
+- A service token exists only in this demo environment and is stored in the host's secret store for both services.
+- A scheduled reset re-seeds the demo database, so stray demo bookings never accumulate.
 
 ## Configuration
 

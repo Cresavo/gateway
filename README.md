@@ -2,7 +2,7 @@
 
 The agent-facing front door for [Cresavo](https://github.com/Cresavo/cresavo) salons. It lets AI assistants find a salon's services and free times and book them, through a REST v1 API and a Streamable HTTP MCP server, while every decision stays with the salon.
 
-**Demo status:** This project is in the demo phase and is not production-ready. A public demo is not yet available; hosting and DNS still need to be configured. See the [known gaps before production](docs/SECURITY_MODEL.md#10-known-gaps-before-production).
+**Demo status:** This project is in the demo phase and is not production-ready. A public demo is not yet available: it needs a hosted Cresavo engine in split mode, plus hosting and DNS (see [`docs/HOSTING.md`](docs/HOSTING.md)). See the [known gaps before production](docs/SECURITY_MODEL.md#10-known-gaps-before-production).
 
 All data in this repository is fictional. The demo salon "Salong Eko" does not exist.
 
@@ -83,6 +83,7 @@ The default is loopback only. Remote mode refuses to start unless every remote f
 - [`docs/HOSTING.md`](docs/HOSTING.md): hosting options and the chosen setup
 - [`docs/E2E.md`](docs/E2E.md): end-to-end test
 - [`docs/PUBLICATION_AUDIT.md`](docs/PUBLICATION_AUDIT.md): history audit before publication
+- [`docs/OWNER_CHECKLIST.md`](docs/OWNER_CHECKLIST.md): what the owner does to make the repository public
 - [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Compatibility

@@ -10,3 +10,7 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule: { interval: weekly }
+    ignore:
+      # Node 24 is the supported runtime; a major runtime change is a deliberate decision.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
