@@ -58,6 +58,7 @@ Endpoints on `http://127.0.0.1:3218`:
 
 | Path | What |
 | --- | --- |
+| `/` | Landing page for developers of AI assistants |
 | `/.well-known/usp` | Discovery profile |
 | `/llms.txt` | Short guide for assistants |
 | `/api/v1/openapi` | OpenAPI 3.1 contract |
