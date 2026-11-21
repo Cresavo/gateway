@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { test } from "node:test";
 import { gateway } from "../src/server.js";
 import { clientAddress, loadConfig, normaliseAddress } from "../src/config.js";
-import { classify, parseMcpBody, rateLimiter } from "../src/limits.js";
+import { classify, defaultLimits, loopbackTestLimits, parseMcpBody, rateLimiter } from "../src/limits.js";
 
 const serviceToken = randomBytes(32).toString("hex");
 const salon = "https://salon.example.test";
@@ -33,6 +33,41 @@ test("configuration defaults to loopback and refuses partial remote setups", () 
     GATEWAY_PUBLIC_ORIGIN: "https://gw.example.test", GATEWAY_TRUST_PROXY_HOPS: "1" });
   assert.equal(remote.options.publicOrigin, "https://gw.example.test");
   assert.equal(remote.host, "0.0.0.0");
+});
+
+test("raised proof limits are restricted to local loopback without a shared store", () => {
+  const local = { SALON_ORIGIN: "http://127.0.0.1:3217" };
+  assert.equal(loadConfig(local).options.limits, undefined);
+  assert.equal(loadConfig({ ...local, GATEWAY_LOOPBACK_TEST_LIMITS: "0" }).options.limits, undefined);
+  assert.equal(loadConfig({ ...local, GATEWAY_LOOPBACK_TEST_LIMITS: "1" }).options.limits, loopbackTestLimits);
+  assert.ok(loopbackTestLimits.booking_create.limit > defaultLimits.booking_create.limit);
+  assert.throws(() => loadConfig({ ...local, GATEWAY_LOOPBACK_TEST_LIMITS: "yes" }),
+    /GATEWAY_LOOPBACK_TEST_LIMITS must be 0 or 1/);
+  const flag = { GATEWAY_LOOPBACK_TEST_LIMITS: "1" };
+  const error = /GATEWAY_LOOPBACK_TEST_LIMITS is for local proofs on loopback only/;
+  assert.throws(() => loadConfig({ ...flag, SALON_ORIGIN: salon, GATEWAY_ALLOW_REMOTE: "1",
+    GATEWAY_LISTEN_HOST: "0.0.0.0", GATEWAY_PUBLIC_ORIGIN: "https://gw.example.test", GATEWAY_TRUST_PROXY_HOPS: "1" }), error);
+  assert.throws(() => loadConfig({ ...local, ...flag, VERCEL: "1", GATEWAY_RATE_LIMIT_REDIS_URL: "rediss://redis.example.test" }), error);
+  assert.throws(() => loadConfig({ ...local, ...flag, GATEWAY_RATE_LIMIT_REDIS_URL: "redis://127.0.0.1:6379" }), error);
+});
+
+test("proof budgets have the intended windows and leave default limits unchanged", () => {
+  assert.ok(Object.isFrozen(loopbackTestLimits));
+  assert.deepEqual(loopbackTestLimits, {
+    read: { limit: 10_000, windowMs: 60_000 },
+    proposal_create: { limit: 1_000, windowMs: 3_600_000 },
+    booking_create: { limit: 1_000, windowMs: 3_600_000 },
+  });
+  assert.deepEqual(defaultLimits, {
+    read: { limit: 60, windowMs: 60_000 },
+    proposal_create: { limit: 5, windowMs: 3_600_000 },
+    booking_create: { limit: 5, windowMs: 3_600_000 },
+  });
+});
+
+test("proof limits cannot bind to a non-loopback host", () => {
+  assert.throws(() => loadConfig({ SALON_ORIGIN: salon, GATEWAY_LOOPBACK_TEST_LIMITS: "1",
+    GATEWAY_LISTEN_HOST: "0.0.0.0" }), /Non-loopback GATEWAY_LISTEN_HOST requires GATEWAY_ALLOW_REMOTE=1/);
 });
 
 test("only the trusted proxy's X-Forwarded-For entry identifies the client", () => {

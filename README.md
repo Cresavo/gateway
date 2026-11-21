@@ -78,6 +78,7 @@ Agent credentials go in the `Authorization` header, never in URLs.
 | `GATEWAY_ALLOW_REMOTE` | `0` | `1` enables remote mode. |
 | `GATEWAY_LISTEN_HOST` | `127.0.0.1` | `0.0.0.0` or `::` only in remote mode. |
 | `GATEWAY_PUBLIC_ORIGIN` | unset | Public `https://` origin, required in remote mode. |
+| `GATEWAY_LOOPBACK_TEST_LIMITS` | `0` | `1` raises the per-IP limits for local cross-repository proofs. Refused with remote mode, on Vercel and with a shared rate-limit store. |
 | `GATEWAY_TRUST_PROXY_HOPS` | `0` | Proxies in front that append `X-Forwarded-For`, required (≥ 1) in remote mode. |
 | `GATEWAY_RATE_LIMIT_REDIS_URL` | unset | Redis-protocol store that shares rate limits between instances. `rediss://` off loopback. Secret. |
 | `GATEWAY_REQUIRE_SHARED_LIMITS` | unset | `1` refuses to start without the shared store. Automatic on Vercel. |

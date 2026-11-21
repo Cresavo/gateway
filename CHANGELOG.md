@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
+- `GATEWAY_LOOPBACK_TEST_LIMITS=1` raises per-IP limits for local cross-repository proofs and is refused when hosted or using a shared store.
 - Landing page for developers of AI assistants at `/`, served by the gateway itself. It is static and script-free, and sends a strict Content-Security-Policy. It advertises the configured public origin.
 - Provider contract v1 (`docs/PROVIDER_CONTRACT.md`) and a guide for connecting any booking system (`docs/CONNECT_A_PROVIDER.md`).
 - `npm run provider:check`: a conformance check against a running provider. It is read-only by default; `--write` also creates one pending proposal. It never books anything and prints no credentials.

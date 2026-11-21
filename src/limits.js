@@ -11,6 +11,13 @@ export const defaultLimits = Object.freeze({
   booking_create: { limit: 5, windowMs: 3_600_000 },
 });
 
+// Local cross-repository proofs only.
+export const loopbackTestLimits = Object.freeze({
+  read: { limit: 10_000, windowMs: 60_000 },
+  proposal_create: { limit: 1_000, windowMs: 3_600_000 },
+  booking_create: { limit: 1_000, windowMs: 3_600_000 },
+});
+
 const createTools = {
   create_booking: "booking_create", usp_bookings_create: "booking_create",
   create_proposal: "proposal_create",
