@@ -14,7 +14,7 @@ Goal: run the gateway beyond loopback, behind HTTPS, against the public Cresavo 
 | Operations effort | Lowest | Low | Highest |
 | Cost for a demo | Free tier possible | Low fixed cost | Low fixed cost, more time |
 
-## Decision (original)
+## Decision (original, before Vercel)
 
 **A small container host running exactly one instance**, with TLS terminated by the host's proxy. It runs the same entry point as local development, keeps in-memory per-IP limits correct, and supports every MCP transport mode. Serverless functions would need an external rate-limit store and a request adapter, which adds moving parts for no gain at demo scale.
 
@@ -28,6 +28,38 @@ The owner chose to run the demo as its own project in the same Vercel team as th
 - Set `GATEWAY_REQUIRE_SHARED_LIMITS=1`. The process also requires the store when it sees Vercel's `VERCEL` variable, but the explicit flag does not depend on that.
 - Set the remote flags below, with `GATEWAY_PUBLIC_ORIGIN=https://gateway.cresavo.com` and `GATEWAY_TRUST_PROXY_HOPS=1` (Vercel sends the client address in `X-Forwarded-For`).
 - Host pinning refuses Vercel's own `*.vercel.app` deployment URLs. Only the custom domain serves requests, plus `/healthz`.
+
+### The hosted demo as configured
+
+| Setting | Value |
+| --- | --- |
+| Project | `cresavo-gateway` in team `niclasvestlund-3367s-projects` (Pro), production branch `main` |
+| Framework preset and region | Container, `fra1` (Frankfurt), the same region as the store |
+| Public origin | `https://gateway.cresavo.com`. The `cresavo.com` zone is on Vercel DNS, and a wildcard record covers the name, so no manual record was needed. HTTP redirects to HTTPS. |
+| Deployment protection | Vercel Authentication on all deployments except custom domains. Unauthenticated requests to `*.vercel.app` stop at Vercel's login and never reach the gateway. |
+| Port | Vercel sets `PORT` (80) at run time, which overrides the image's 3218 |
+| Provider | `SALON_ORIGIN=https://sandbox.cresavo.com`. No project owns that name yet. The connection fails before reaching any application (observed: booking tools answer `503 provider_unavailable`). Attach the name only to the sandbox project, because whoever serves it receives the service token. |
+| Rate-limit store | Redis Cloud, Free plan (30 MB, 100 operations per second, 30 connections, no persistence), Frankfurt, `rediss://` |
+| Spend | Team budget plus a project budget with **Pause production** |
+
+Rules for the environment variables:
+
+- Set `GATEWAY_SERVICE_TOKEN` and `GATEWAY_RATE_LIMIT_REDIS_URL` as **Sensitive** and for **Production only**. Preview deployments build any pushed branch; they must not receive the production service identity or store.
+- When the sandbox goes live, generate one new service token and set it in both projects in the same change, then redeploy both.
+
+### Instances, connections and limits
+
+Vercel scales the container per request load. Early logs suggest one new instance for each concurrent request: six simultaneous requests produced five `GATEWAY_READY` lines. Each instance opens its own connection to the store. Consequences on the Free store plan:
+
+- Above about 30 concurrent instances, new instances cannot connect. They still serve reads with per-instance counters and refuse creates with 429, so limits never loosen and nothing is billed. A burst can, however, make the demo refuse bookings for a while.
+- Counters are lost if the store restarts (no persistence on Free), which at worst lets a client start a new window early.
+
+Ways to reduce this, to be tried in this order:
+
+1. Enable **Fluid compute** for the project, so one instance serves many concurrent requests. Vercel documents it for functions; check that it applies to the container runtime before relying on it, and watch whether the number of `GATEWAY_READY` lines drops.
+2. If connections stay a problem, use a store reached over HTTPS without long-lived connections (for example Upstash's REST interface, which also has a free plan with TLS). That needs a small adapter in `src/shared-limits.js`.
+
+Vercel documents a fixed instance count only for daemons (background workers), not for request-serving containers.
 
 ### Cost safety
 

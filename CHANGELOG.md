@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Documentation
+
+- `docs/HOSTING.md` records the hosted demo as configured: project, region, deployment protection, port, provider placeholder, store plan limits, production-only secrets, and how instance scaling interacts with the store's connection limit. README states that the gateway is live and that booking tools answer 503 until the sandbox exists.
+
 ### Added
 
 - `GATEWAY_LOOPBACK_TEST_LIMITS=1` raises per-IP limits for local cross-repository proofs and is refused when hosted or using a shared store.
