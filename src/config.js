@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { isIP } from "node:net";
+import { loopbackTestLimits } from "./limits.js";
 // Runtime configuration. The default is loopback-only. Serving beyond loopback
 // needs every one of the explicit flags below; a partial configuration refuses to start.
 
@@ -24,10 +25,12 @@ export function loadConfig(env = process.env) {
   const hops = Number(env.GATEWAY_TRUST_PROXY_HOPS || 0);
   if (!Number.isInteger(hops) || hops < 0 || hops > 5) throw new Error("GATEWAY_TRUST_PROXY_HOPS must be 0 to 5");
   const store = rateLimitStore(env, remote);
+  const testLimits = loopbackProofLimits(env, remote);
   if (!remote) {
     if (!LOOPBACK.has(host)) throw new Error("Non-loopback GATEWAY_LISTEN_HOST requires GATEWAY_ALLOW_REMOTE=1");
     if (env.GATEWAY_PUBLIC_ORIGIN || hops) throw new Error("GATEWAY_PUBLIC_ORIGIN and proxy hops require GATEWAY_ALLOW_REMOTE=1");
-    return { port, host, salon: env.SALON_ORIGIN, serviceToken: env.GATEWAY_SERVICE_TOKEN, options: { ...store } };
+    return { port, host, salon: env.SALON_ORIGIN, serviceToken: env.GATEWAY_SERVICE_TOKEN,
+      options: { ...store, ...(testLimits ? { limits: loopbackTestLimits } : {}) } };
   }
   if (!LOOPBACK.has(host) && !WILDCARD.has(host)) throw new Error("GATEWAY_LISTEN_HOST must be loopback, 0.0.0.0 or ::");
   if (!env.GATEWAY_PUBLIC_ORIGIN) throw new Error("GATEWAY_ALLOW_REMOTE=1 requires GATEWAY_PUBLIC_ORIGIN");
@@ -38,6 +41,15 @@ export function loadConfig(env = process.env) {
     port, host, salon: env.SALON_ORIGIN, serviceToken: env.GATEWAY_SERVICE_TOKEN,
     options: { publicOrigin: publicOrigin(env.GATEWAY_PUBLIC_ORIGIN), trustProxyHops: hops, ...store },
   };
+}
+
+function loopbackProofLimits(env, remote) {
+  const value = env.GATEWAY_LOOPBACK_TEST_LIMITS;
+  if (value === undefined || value === "0") return false;
+  if (value !== "1") throw new Error("GATEWAY_LOOPBACK_TEST_LIMITS must be 0 or 1");
+  if (remote || env.VERCEL || env.GATEWAY_RATE_LIMIT_REDIS_URL)
+    throw new Error("GATEWAY_LOOPBACK_TEST_LIMITS is for local proofs on loopback only");
+  return true;
 }
 
 // Shared rate-limit store. Required wherever more than one instance can run
