@@ -4,264 +4,280 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cresavo Gateway</title>
-<meta name="description" content="Open-source REST and MCP gateway that lets AI assistants book salon appointments, with the customer's approval on every booking.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23196b5b'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Cresavo Gateway — AI assistants book, the customer approves</title>
+<meta name="description" content="Let AI assistants book salon appointments. The customer approves every one. MCP over Streamable HTTP and REST with OpenAPI 3.1.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FAF7F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18141E" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2350364B'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='%23F2B184' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="top">
-  <div class="wrap bar">
-    <a class="brand" href="/"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></span>Cresavo Gateway</a>
-    <nav aria-label="Main">
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="brand" href="#top" aria-label="Cresavo Gateway, back to top"><svg class="wordmark" viewBox="62 -1081 6992 1107" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M579 24C846 24 1040 -148 1058 -379L809 -379C785 -262 714 -186 582 -186C416 -186 318 -319 318 -527C318 -736 417 -870 582 -870C713 -870 792 -791 811 -678L1058 -678C1036 -913 844 -1080 579 -1080C270 -1080 63 -853 63 -527C63 -201 270 24 579 24Z"/><path d="M1181.944 0L1433.944 0L1433.944 -598C1433.944 -763 1526.944 -846 1646.944 -846C1696.944 -846 1746.944 -841 1765.944 -838L1765.944 -1062C1745.944 -1064 1717.944 -1066 1683.944 -1066C1547.944 -1066 1466.944 -1002 1427.944 -881L1424.944 -881L1424.944 -1056L1181.944 -1056L1181.944 0Z"/><path d="M2302.504 24C2549.504 24 2745.504 -119 2785.504 -326L2549.504 -326C2520.504 -236 2435.504 -175 2308.504 -175C2138.504 -175 2040.504 -290 2034.504 -462L2798.504 -462L2798.504 -531C2798.504 -855 2596.504 -1080 2292.504 -1080C1996.504 -1080 1787.504 -848 1787.504 -527C1787.504 -207 1985.504 24 2302.504 24ZM2036.504 -636C2053.504 -787 2150.504 -880 2296.504 -880C2442.504 -880 2540.504 -787 2556.504 -636L2036.504 -636Z"/><path d="M3350.736 25C3611.736 25 3798.736 -105 3798.736 -311C3798.736 -466 3701.736 -558 3492.736 -602L3302.736 -641C3214.736 -660 3162.736 -699 3162.736 -762C3162.736 -834 3230.736 -890 3341.736 -890C3456.736 -890 3533.736 -821 3535.736 -727L3772.736 -727C3766.736 -944 3591.736 -1079 3335.736 -1079C3077.736 -1079 2910.736 -948 2910.736 -754C2910.736 -594 3016.736 -491 3218.736 -449L3398.736 -412C3487.736 -393 3542.736 -356 3542.736 -292C3542.736 -217 3468.736 -164 3346.736 -164C3220.736 -164 3146.736 -223 3135.736 -326L2886.736 -326C2902.736 -99 3093.736 25 3350.736 25Z"/><path d="M4333.68 21C4471.68 21 4586.68 -39 4652.68 -159L4655.68 -159L4655.68 0L4902.68 0L4902.68 -1056L4655.68 -1056L4655.68 -909L4651.68 -909C4586.68 -1021 4468.68 -1077 4331.68 -1077C4060.68 -1077 3876.68 -854 3876.68 -529C3876.68 -200 4057.68 21 4333.68 21ZM4392.68 -190C4236.68 -190 4131.68 -310 4131.68 -529C4131.68 -747 4236.68 -868 4392.68 -868C4557.68 -868 4665.68 -734 4665.68 -529C4665.68 -323 4557.68 -190 4392.68 -190Z"/><path d="M5360.048 0L5636.048 0L6033.048 -1056L5769.048 -1056L5579.048 -506C5552.048 -423 5527.048 -339 5502.048 -256C5476.048 -339 5450.048 -423 5423.048 -506L5230.048 -1056L4963.048 -1056L5360.048 0Z"/><path d="M6531.512 24C6842.512 24 7052.512 -199 7052.512 -527C7052.512 -855 6842.512 -1080 6531.512 -1080C6220.512 -1080 6010.512 -855 6010.512 -527C6010.512 -199 6220.512 24 6531.512 24ZM6531.512 -187C6368.512 -187 6265.512 -316 6265.512 -527C6265.512 -739 6369.512 -869 6531.512 -869C6692.512 -869 6796.512 -738 6796.512 -527C6796.512 -317 6693.512 -187 6531.512 -187Z"/></g></svg><span class="brand-tag">Gateway</span></a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#flow">Flow</a>
       <a href="#connect">Connect</a>
-      <a href="#walkthrough">Walkthrough</a>
       <a href="#tools">Tools</a>
       <a href="#limits">Limits</a>
-      <a href="https://github.com/Cresavo/gateway">GitHub</a>
     </nav>
+    <a class="icon-btn" href="https://github.com/Cresavo/gateway" aria-label="Cresavo Gateway on GitHub">
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
   </div>
 </header>
 
 <main id="main">
-  <section class="hero">
-    <div class="wrap hero-grid">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="dot" aria-hidden="true"></span>Open source · REST v1 · Streamable HTTP MCP</p>
-        <h1>Let AI assistants book salon appointments. <span class="accent">The customer approves every one.</span></h1>
-        <p class="lead">Cresavo Gateway is the agent-facing front door to <a href="https://github.com/Cresavo/cresavo">Cresavo</a> salons. Your assistant finds free times and proposes a booking. The customer says yes on their own phone. Only then does the salon book it, exactly as approved.</p>
-        <div class="cta">
-          <a class="button" href="#connect">Connect an assistant</a>
-          <a class="button ghost" href="#walkthrough">See a booking happen</a>
-        </div>
-        <p class="note">Demo phase: the salon behind this gateway, “Salong Eko”, is fictional. Use fictional contact details only.</p>
-      </div>
 
-      <figure class="flow" aria-labelledby="flow-caption">
-        <svg class="flow-svg" viewBox="0 0 440 340" role="img" aria-labelledby="flow-title flow-desc">
-          <title id="flow-title">How a request travels</title>
-          <desc id="flow-desc">An AI assistant proposes a booking through the gateway. The salon asks the customer to approve it on their phone. After approval the assistant calls create_booking through the gateway, and the salon books it.</desc>
-          <defs>
-            <linearGradient id="g-line" x1="0" x2="1">
-              <stop offset="0" stop-color="currentColor" stop-opacity=".15"/>
-              <stop offset="1" stop-color="currentColor" stop-opacity=".45"/>
-            </linearGradient>
-          </defs>
-          <!-- links -->
-          <path class="link" d="M118 70 H182"/>
-          <path class="link" d="M258 70 H322"/>
-          <path class="link" d="M360 140 V196"/>
-          <path class="link" d="M220 140 V228"/>
-          <path class="flowline l1" d="M118 70 H182"/>
-          <path class="flowline l2" d="M258 70 H322"/>
-          <path class="flowline l3" d="M360 140 V196"/>
-          <path class="flowline l4" d="M220 140 V228"/>
-          <!-- packets -->
-          <circle class="packet p1" r="5" cx="118" cy="70"/>
-          <circle class="packet p2" r="5" cx="258" cy="70"/>
-          <circle class="packet p3" r="5" cx="360" cy="140"/>
-          <circle class="packet p4" r="5" cx="220" cy="140"/>
-          <!-- nodes -->
-          <g class="node n1" transform="translate(42 32)">
-            <rect width="76" height="76" rx="18"/>
-            <path class="icon" d="M26 30h24a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H36l-8 6v-6h-2a4 4 0 0 1-4-4V34a4 4 0 0 1 4-4z"/>
-            <circle class="icon-dot" cx="32" cy="40" r="2"/><circle class="icon-dot" cx="38" cy="40" r="2"/><circle class="icon-dot" cx="44" cy="40" r="2"/>
-          </g>
-          <g class="node n2 core" transform="translate(182 32)">
-            <rect width="76" height="76" rx="18"/>
-            <path class="icon" d="M38 22l14 6v10c0 9-6 15-14 18-8-3-14-9-14-18V28z"/>
-            <path class="icon" d="M32 39l4 4 8-9"/>
-          </g>
-          <g class="node n3" transform="translate(322 32)">
-            <rect width="76" height="76" rx="18"/>
-            <path class="icon" d="M24 34h28v20H24z M22 34l4-8h24l4 8"/>
-            <path class="icon" d="M34 54v-9h8v9"/>
-          </g>
-          <g class="node n4" transform="translate(322 196)">
-            <rect width="76" height="108" rx="18"/>
-            <rect class="phone" x="20" y="16" width="36" height="66" rx="7"/>
-            <rect class="approve" x="25" y="52" width="26" height="12" rx="6"/>
-            <path class="tick" d="M33 58l3 3 6-6"/>
-            <path class="icon" d="M28 30h20 M28 38h14"/>
-          </g>
-          <g class="node n5" transform="translate(182 228)">
-            <rect width="76" height="76" rx="18"/>
-            <rect class="icon" x="22" y="24" width="32" height="30" rx="4"/>
-            <path class="icon" d="M22 32h32 M30 20v8 M46 20v8"/>
-            <path class="done" d="M31 43l5 5 9-9"/>
-          </g>
-          <!-- labels -->
-          <text class="label" x="80" y="128" text-anchor="middle">AI assistant</text>
-          <text class="label strong" x="220" y="128" text-anchor="middle">Gateway</text>
-          <text class="label" x="360" y="128" text-anchor="middle">Salon</text>
-          <text class="label" x="360" y="324" text-anchor="middle">Customer</text>
-          <text class="label" x="220" y="324" text-anchor="middle">Booked</text>
-          <!-- step tags -->
-          <text class="tag t1" x="150" y="58" text-anchor="middle">propose</text>
-          <text class="tag t2" x="290" y="58" text-anchor="middle">forward</text>
-          <text class="tag t3" x="374" y="172">ask</text>
-          <text class="tag t4" x="230" y="190">create_booking</text>
-        </svg>
-        <figcaption id="flow-caption">The gateway checks the salon's access on every request and never decides on its own.</figcaption>
+<!-- ============ HERO ============ -->
+<section class="hero" id="top" aria-labelledby="h-hero">
+  <div class="wrap hero-in">
+    <div class="hero-head">
+      <h1 id="h-hero">Let AI assistants book salon appointments. The customer approves every one.</h1>
+    </div>
+
+    <div class="hero-run">
+      <figure class="run" aria-labelledby="run-label">
+        <div class="run-head">
+          <span class="run-ico" aria-hidden="true">
+            <svg class="spark" viewBox="-12 -12 24 24" focusable="false"><g><circle class="c0" r="2.1"/><circle class="c1" cx="0" cy="-4.6" r="1.55"/><circle class="c2" cx="0" cy="-7.6" r="1.15"/><circle class="c3" cx="0" cy="-10.3" r="0.8"/><circle class="c1" cx="4.6" cy="0" r="1.55"/><circle class="c2" cx="7.6" cy="0" r="1.15"/><circle class="c3" cx="10.3" cy="0" r="0.8"/><circle class="c1" cx="0" cy="4.6" r="1.55"/><circle class="c2" cx="0" cy="7.6" r="1.15"/><circle class="c3" cx="0" cy="10.3" r="0.8"/><circle class="c1" cx="-4.6" cy="0" r="1.55"/><circle class="c2" cx="-7.6" cy="0" r="1.15"/><circle class="c3" cx="-10.3" cy="0" r="0.8"/><circle class="cd" cx="2.5" cy="2.5" r=".85"/><circle class="cd" cx="2.5" cy="-2.5" r=".85"/><circle class="cd" cx="-2.5" cy="2.5" r=".85"/><circle class="cd" cx="-2.5" cy="-2.5" r=".85"/></g></svg>
+          </span>
+          <figcaption class="run-label" id="run-label">Needs the customer’s approval</figcaption>
+          <span class="run-step">5 of 6</span>
+        </div>
+        <div class="run-path" aria-hidden="true"><span class="seg" data-s="done"></span><span class="seg" data-s="done"></span><span class="seg" data-s="done"></span><span class="seg" data-s="done"></span><span class="seg" data-s="wait"></span><span class="seg"></span></div>
+        <div class="run-ask">
+          <p class="ask-k">The customer is asked to approve</p>
+          <dl class="ask-dl">
+            <div><dt>Service</dt><dd>Klippning</dd></div>
+            <div><dt>When</dt><dd>Mon 09:00</dd></div>
+            <div><dt>With</dt><dd>Alva</dd></div>
+            <div><dt>Price</dt><dd>650 kr</dd></div>
+          </dl>
+          <p class="run-auto"><span class="wait-dot" aria-hidden="true"></span>Waiting for a yes on the customer’s own phone</p>
+        </div>
+        <ol class="run-log" reversed aria-label="Finished steps, newest first">
+          <li class="h-row"><span class="h-dot" aria-hidden="true"></span><div class="h-txt"><p class="h-label">Proposing a booking</p><p class="h-res">pending · sent to the customer <code class="h-tool">create_proposal</code></p></div></li>
+          <li class="h-row"><span class="h-dot" aria-hidden="true"></span><div class="h-txt"><p class="h-label">Finding free times</p><p class="h-res">09:00 · 10:00 · 11:00 free <code class="h-tool">get_availability</code></p></div></li>
+          <li class="h-row"><span class="h-dot" aria-hidden="true"></span><div class="h-txt"><p class="h-label">Checking services</p><p class="h-res">Klippning · 45 min · 650 kr <code class="h-tool">list_services</code></p></div></li>
+          <li class="h-row"><span class="h-dot" aria-hidden="true"></span><div class="h-txt"><p class="h-label">Finding the salon</p><p class="h-res">Salong Eko <code class="h-tool">discovery</code></p></div></li>
+        </ol>
+        <div class="run-foot">
+          <a class="rb" href="#flow">See the whole booking <span aria-hidden="true">→</span></a>
+        </div>
       </figure>
     </div>
-  </section>
 
-  <section class="wrap pillars" aria-labelledby="principles">
-    <h2 id="principles" class="sr-only">Principles</h2>
-    <div class="pillar">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
-      <h3>Consent built in</h3>
-      <p>Every booking runs on a mandate the customer approved. Change the price, staff or time and it no longer counts.</p>
+    <div class="hero-rest">
+      <p class="lede">Your assistant finds free times and proposes a booking. The customer says yes on their own phone. Only then does the salon book it, exactly as approved.</p>
+      <p class="sub">The gateway checks the salon’s access on every request and never decides on its own.</p>
+      <div class="cta">
+        <a class="btn btn-main" href="#connect">Connect an agent</a>
+        <a class="tlink" href="https://github.com/Cresavo/gateway">Read the code <span aria-hidden="true">→</span></a>
+      </div>
     </div>
-    <div class="pillar">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M4 20L20 4"/></svg>
-      <h3>No database</h3>
-      <p>Only in-memory rate-limit counters keyed by IP. No logs of bodies or credentials. The salon owns the calendar, the data and every decision.</p>
-    </div>
-    <div class="pillar">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>
-      <h3>Standard protocols</h3>
-      <p>MCP over Streamable HTTP for agents, REST with OpenAPI 3.1 for everything else. Same operations on both.</p>
-    </div>
-    <div class="pillar">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-      <h3>Safe to retry</h3>
-      <p>Timed out? Retry with the same idempotency key and get the original booking back, never a duplicate.</p>
-    </div>
-  </section>
+  </div>
+</section>
 
-  <section id="walkthrough" class="block alt">
-    <div class="wrap">
-      <h2>A booking, end to end</h2>
-      <p class="sub">What your assistant sees over MCP, and what the customer sees on their phone.</p>
-      <div class="walk">
-        <ol class="chat" aria-label="Example conversation with tool calls">
-          <li class="msg user s1"><span class="who">Customer</span>Book me a haircut with Alva on Monday morning.</li>
-          <li class="msg tool s2"><span class="call">list_services</span><span class="res">Klippning · 45 min · 650 kr</span></li>
-          <li class="msg tool s3"><span class="call">get_availability</span><span class="res">09:00 · 10:00 · 11:00 free</span></li>
-          <li class="msg tool s4"><span class="call">create_proposal</span><span class="res"><span class="pill wait">pending</span> sent to the customer</span></li>
-          <li class="msg bot s5"><span class="who">Assistant</span>I've sent the booking to your phone. Approve it there and I'll finish.</li>
-          <li class="msg tool s6"><span class="call">get_proposal</span><span class="res"><span class="pill ok">approved</span> mandate received</span></li>
-          <li class="msg tool s7"><span class="call">create_booking</span><span class="res"><span class="pill ok">confirmed</span> Mon 09:00 with Alva</span></li>
-          <li class="msg bot s8"><span class="who">Assistant</span>Done. You're booked for Monday 09:00.</li>
+<!-- ============ FLOW ============ -->
+<section class="sec" id="flow" aria-labelledby="h-flow">
+  <div class="wrap">
+    <header class="sec-head">
+      <h2 id="h-flow">One booking, eight steps.</h2>
+    </header>
+
+    <div class="flow">
+      <figure class="term" aria-labelledby="term-cap">
+        <div class="term-bar"><figcaption id="term-cap">The conversation</figcaption></div>
+        <ol class="log">
+          <li class="say"><span class="who">customer</span><span class="res">“Book me a haircut with Alva on Monday morning.”</span></li>
+          <li class="call"><code class="tool">list_services</code><span class="res">Klippning · 45 min · 650 kr</span></li>
+          <li class="call"><code class="tool">get_availability</code><span class="res">09:00 · 10:00 · 11:00 free</span></li>
+          <li class="call"><code class="tool">create_proposal</code><span class="res"><span class="pill" data-s="pending">pending</span> sent to the customer</span></li>
+          <li class="say"><span class="who">assistant</span><span class="res">“I’ve sent the booking to your phone. Approve it there and I’ll finish.”</span></li>
+          <li class="call"><code class="tool">get_proposal</code><span class="res"><span class="pill" data-s="approved">approved</span> mandate received</span></li>
+          <li class="call"><code class="tool">create_booking</code><span class="res"><span class="pill" data-s="confirmed">confirmed</span> Mon 09:00 with Alva</span></li>
+          <li class="say"><span class="who">assistant</span><span class="res">“Done. You’re booked for Monday 09:00.”</span></li>
         </ol>
-        <div class="device" aria-hidden="true">
-          <div class="screen">
-            <p class="salon">Salong Eko</p>
-            <p class="ask">Approve this booking?</p>
-            <dl>
-              <div><dt>Service</dt><dd>Klippning</dd></div>
-              <div><dt>With</dt><dd>Alva</dd></div>
-              <div><dt>When</dt><dd>Mon 09:00</dd></div>
-              <div><dt>Price</dt><dd>650 kr</dd></div>
-            </dl>
-            <span class="approve-btn">Yes, approve</span>
-            <span class="approved"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg>Approved</span>
-          </div>
+      </figure>
+
+      <div class="phone">
+        <p class="phone-label" id="phone-label">The customer’s phone</p>
+        <div class="card" role="group" aria-labelledby="phone-label">
+          <p class="card-salon">Salong Eko</p>
+          <p class="card-q">Approve this booking?</p>
+          <dl class="card-dl">
+            <div><dt>Service</dt><dd>Klippning</dd></div>
+            <div><dt>Staff</dt><dd>Alva</dd></div>
+            <div><dt>When</dt><dd>Mon 09:00</dd></div>
+            <div><dt>Price</dt><dd>650 kr</dd></div>
+          </dl>
+          <p class="card-done mono"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="pill" data-s="confirmed">confirmed</span></p>
         </div>
       </div>
-      <div class="grid three outcomes">
-        <div class="card small warn"><h3>Price or terms changed</h3><p>The mandate no longer matches: <code>mandate_denied</code>. Nothing is booked.</p></div>
-        <div class="card small warn"><h3>Slot taken</h3><p>Someone else booked first: <code>slot_unavailable</code>. Propose a new time.</p></div>
-        <div class="card small warn"><h3>Approval expired</h3><p>The customer waited too long: <code>mandate_denied</code>. Start a new proposal.</p></div>
-      </div>
     </div>
-  </section>
 
-  <section id="connect" class="wrap block">
-    <h2>Connect</h2>
-    <p class="sub">Two transports, one contract. Pick whichever your agent speaks.</p>
-    <div class="grid two">
-      <div class="card">
-        <h3><span class="badge">MCP</span> Streamable HTTP</h3>
-        <p>One JSON-RPC message per request.</p>
-        <pre><code>{{ORIGIN}}/api/v1/mcp</code></pre>
-        <p>Add it to any MCP client that supports remote servers and custom headers:</p>
-<pre class="term" tabindex="0"><code>{
-  "mcpServers": {
-    "cresavo": {
-      "type": "http",
-      "url": "{{ORIGIN}}/api/v1/mcp",
-      "headers": { "Authorization": "Bearer ${CRESAVO_AGENT_KEY}" }
-    }
-  }
-}</code></pre>
-      </div>
-      <div class="card">
-        <h3><span class="badge">REST</span> OpenAPI 3.1</h3>
-        <p>The same operations as plain HTTP.</p>
-        <pre><code>{{ORIGIN}}/api/v1</code></pre>
-<pre class="term" tabindex="0"><code>curl "{{ORIGIN}}/api/v1/services?business=demo" \
-  -H "Authorization: Bearer $CRESAVO_AGENT_KEY"</code></pre>
-        <p><a href="/api/v1/openapi">Download the OpenAPI contract</a>. Discovery for agents: <a href="/.well-known/usp"><code>/.well-known/usp</code></a> and <a href="/llms.txt"><code>/llms.txt</code></a>.</p>
-      </div>
-    </div>
-    <div class="callout">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-      <p><strong>Credentials.</strong> Agent credentials are issued by the salon provider, never by the gateway. Send them in the <code>Authorization</code> header only. Never put them in URLs, prompts or chat. To request demo access, <a href="https://github.com/Cresavo/gateway/issues">open an issue</a>.</p>
-    </div>
-  </section>
+    <h3 class="sub-h">Built so an assistant can’t overreach</h3>
+    <dl class="principles">
+      <div><dt>Consent built in</dt><dd>Every booking runs on a mandate the customer approved. Change price, staff or time and it no longer counts.</dd></div>
+      <div><dt>No database</dt><dd>Only in-memory rate-limit counters keyed by IP. No logs of bodies or credentials. The salon owns calendar, data and every decision.</dd></div>
+      <div><dt>Standard protocols</dt><dd>MCP over Streamable HTTP for agents, REST with OpenAPI 3.1. Same operations on both.</dd></div>
+      <div><dt>Safe to retry</dt><dd>The same idempotency key returns the original booking, never a duplicate.</dd></div>
+    </dl>
 
-  <section id="tools" class="block alt">
-    <div class="wrap">
-      <h2>MCP tools</h2>
-      <p class="sub">Read tools are safe to call freely. Write tools always end at the customer.</p>
-      <div class="table" tabindex="0" role="region" aria-label="MCP tools table">
-        <table>
-          <thead><tr><th scope="col">Tool</th><th scope="col">What it does</th><th scope="col">Scope</th></tr></thead>
-          <tbody>
-            <tr><td><code>list_services</code></td><td>Services, prices and staff for a salon</td><td><span class="scope r">services:read</span></td></tr>
-            <tr><td><code>get_availability</code></td><td>Bookable starts for a service and date</td><td><span class="scope r">availability:read</span></td></tr>
-            <tr><td><code>create_proposal</code></td><td>Prepare a booking for customer approval</td><td><span class="scope w">bookings:write</span></td></tr>
-            <tr><td><code>get_proposal</code></td><td>Status of a proposal and, once approved, its mandate</td><td><span class="scope r">bookings:read</span></td></tr>
-            <tr><td><code>create_booking</code></td><td>Book under an approved mandate</td><td><span class="scope w">bookings:write</span></td></tr>
-            <tr><td><code>get_booking</code></td><td>Status of a booking your client created</td><td><span class="scope r">bookings:read</span></td></tr>
-            <tr><td><code>cancel_booking</code></td><td>Not available yet: cancellation will need its own customer approval</td><td><span class="scope off">unavailable</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="sub small">USP-style aliases (<code>usp_services_list</code>, <code>usp_availability_query</code>, <code>usp_bookings_create</code> and more) map to the same native inputs. Full USP conformance is not claimed.</p>
+    <h3 class="sub-h">When it fails, it fails closed</h3>
+    <div class="tbl-wrap">
+      <table class="tbl fails">
+        <thead><tr><th scope="col">What happened</th><th scope="col">Error</th><th scope="col">Result</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Price or terms changed</th><td><code class="fail-code">mandate_denied</code></td><td>Nothing is booked</td></tr>
+          <tr><th scope="row">Slot taken</th><td><code class="fail-code">slot_unavailable</code></td><td>Propose a new time</td></tr>
+          <tr><th scope="row">Approval expired</th><td><code class="fail-code">mandate_denied</code></td><td>Start a new proposal</td></tr>
+        </tbody>
+      </table>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="limits" class="wrap block">
-    <h2>Limits and errors</h2>
-    <p class="sub">Per client IP. Hosted assistants share egress IPs, so these caps apply to all their users together; contact the salon provider for higher limits. The salon adds its own limits per agent and per customer.</p>
-    <div class="grid three">
-      <div class="card stat"><p class="big">60<span>/min</span></p><p>requests per IP</p></div>
-      <div class="card stat"><p class="big">5<span>/hour</span></p><p>proposals per IP</p></div>
-      <div class="card stat"><p class="big">5<span>/hour</span></p><p>bookings per IP</p></div>
+<!-- ============ CONNECT ============ -->
+<section class="sec" id="connect" aria-labelledby="h-connect">
+  <div class="wrap">
+    <header class="sec-head">
+      <h2 id="h-connect">Two doors, same operations.</h2>
+    </header>
+
+    <div class="doors">
+      <article class="door" aria-labelledby="h-mcp">
+        <h3 id="h-mcp"><span class="mono">MCP</span> Streamable HTTP</h3>
+        <p class="endpoint mono">{{ORIGIN}}/api/v1/mcp</p>
+        <p class="note">One JSON-RPC message per request.</p>
+        <div class="code">
+          <div class="code-bar"><span class="mono">mcp.json</span></div>
+          <div class="code-scroll" tabindex="0" role="region" aria-label="MCP client configuration"><pre><code><span class="p">{</span>
+  <span class="k">"mcpServers"</span>: <span class="p">{</span>
+    <span class="k">"cresavo"</span>: <span class="p">{</span>
+      <span class="k">"type"</span>: <span class="s">"http"</span>,
+      <span class="k">"url"</span>: <span class="s">"{{ORIGIN}}/api/v1/mcp"</span>,
+      <span class="k">"headers"</span>: <span class="p">{</span>
+        <span class="k">"Authorization"</span>: <span class="s">"Bearer ${CRESAVO_AGENT_KEY}"</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="door" aria-labelledby="h-rest">
+        <h3 id="h-rest"><span class="mono">REST</span> OpenAPI 3.1</h3>
+        <p class="endpoint mono">{{ORIGIN}}/api/v1</p>
+        <div class="code">
+          <div class="code-bar"><span class="mono">shell</span></div>
+          <div class="code-scroll" tabindex="0" role="region" aria-label="curl example"><pre><code><span class="c">$</span> curl <span class="s">"{{ORIGIN}}/api/v1/services?business=demo"</span> \
+    -H <span class="s">"Authorization: Bearer $CRESAVO_AGENT_KEY"</span></code></pre></div>
+        </div>
+      </article>
     </div>
-<pre class="term" tabindex="0"><code>HTTP/1.1 429 Too Many Requests
-Retry-After: 1800
 
-{"apiVersion":"v1","error":{"code":"rate_limited","message":"Too many requests. Retry later."}}</code></pre>
-  </section>
+    <dl class="disco">
+      <div><dt>Contract</dt><dd><a class="mono" href="/api/v1/openapi">/api/v1/openapi</a></dd></div>
+      <div><dt>Discovery</dt><dd><a class="mono" href="/.well-known/usp">/.well-known/usp</a> <a class="mono" href="/llms.txt">/llms.txt</a></dd></div>
+    </dl>
 
-  <section class="block alt">
-    <div class="wrap never-wrap">
-      <div>
-        <h2>What the gateway never does</h2>
-        <p class="sub">These are tested, not promises. Read the full <a href="https://github.com/Cresavo/gateway/blob/main/docs/SECURITY_MODEL.md">security model</a>.</p>
-      </div>
-      <ul class="never">
-        <li>Invent a booking result. No salon answer means no booking.</li>
-        <li>Reuse an access check across requests.</li>
-        <li>Forward browser sessions, cookies or client IP headers.</li>
-        <li>Store customer data, or log credentials or request bodies. It has no database; only in-memory rate-limit counters keyed by IP.</li>
-        <li>Take payments, export data or bulk delete.</li>
-      </ul>
+    <aside class="keys" aria-labelledby="h-keys">
+      <h3 id="h-keys">Credentials</h3>
+      <p>Issued by the salon provider, never by the gateway. Send them in the <code>Authorization</code> header only. Never in URLs, prompts or chat.</p>
+      <p>Demo access: <a href="https://github.com/Cresavo/gateway/issues">open an issue</a>.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ TOOLS ============ -->
+<section class="sec" id="tools" aria-labelledby="h-tools">
+  <div class="wrap">
+    <header class="sec-head">
+      <h2 id="h-tools">Read freely. Writes end at the customer.</h2>
+    </header>
+    <ul class="tools">
+      <li><code class="t-name">list_services</code><span class="t-what">Services, prices and staff for a salon</span><span class="chip mono" data-scope="read">services:read</span></li>
+      <li><code class="t-name">get_availability</code><span class="t-what">Bookable starts for a service and date</span><span class="chip mono" data-scope="read">availability:read</span></li>
+      <li><code class="t-name">create_proposal</code><span class="t-what">Prepare a booking for customer approval</span><span class="chip mono" data-scope="write">bookings:write</span></li>
+      <li><code class="t-name">get_proposal</code><span class="t-what">Status of a proposal and, once approved, its mandate</span><span class="chip mono" data-scope="read">bookings:read</span></li>
+      <li><code class="t-name">create_booking</code><span class="t-what">Book under an approved mandate</span><span class="chip mono" data-scope="write">bookings:write</span></li>
+      <li><code class="t-name">get_booking</code><span class="t-what">Status of a booking your client created</span><span class="chip mono" data-scope="read">bookings:read</span></li>
+      <li class="off"><code class="t-name">cancel_booking</code><span class="t-what">Not available yet (will need its own customer approval)</span><span class="chip mono" data-scope="off">unavailable</span></li>
+    </ul>
+    <p class="fine">Read tools are safe to call freely; write tools always end at the customer. USP-style aliases (<code>usp_services_list</code>, <code>usp_availability_query</code>, <code>usp_bookings_create</code> and more) map to the same inputs; full USP conformance is not claimed.</p>
+  </div>
+</section>
+
+<!-- ============ LIMITS ============ -->
+<section class="sec" id="limits" aria-labelledby="h-limits">
+  <div class="wrap">
+    <header class="sec-head">
+      <h2 id="h-limits">Per client IP.</h2>
+      <p class="sec-lede">Hosted assistants share egress IPs, so the caps apply to all their users together. The salon adds its own limits.</p>
+    </header>
+    <div class="tbl-wrap">
+      <table class="tbl limits">
+        <thead><tr><th scope="col">What</th><th scope="col" class="num">Cap per IP</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Requests</th><td class="num"><span class="big">60</span> per minute</td></tr>
+          <tr><th scope="row">Proposals</th><td class="num"><span class="big">5</span> per hour</td></tr>
+          <tr><th scope="row">Bookings</th><td class="num"><span class="big">5</span> per hour</td></tr>
+        </tbody>
+      </table>
     </div>
-    <p class="wrap report">Found a problem? <a href="https://github.com/Cresavo/gateway/security/advisories/new">Report it privately</a>.</p>
-  </section>
+    <div class="code code-429">
+      <div class="code-bar"><span class="mono">over the limit</span></div>
+      <div class="code-scroll" tabindex="0" role="region" aria-label="Example 429 response"><pre><code><span class="c">HTTP/1.1</span> <span class="e">429 Too Many Requests</span>
+<span class="k">Retry-After</span>: 1800
+
+<span class="p">{</span><span class="k">"apiVersion"</span>:<span class="s">"v1"</span>,<span class="k">"error"</span>:<span class="p">{</span>
+  <span class="k">"code"</span>:<span class="s">"rate_limited"</span>,
+  <span class="k">"message"</span>:<span class="s">"Too many requests. Retry later."</span>
+<span class="p">}}</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NEVER ============ -->
+<section class="sec" id="never" aria-labelledby="h-never">
+  <div class="wrap never-in">
+    <header class="sec-head">
+      <h2 id="h-never">What the gateway never does.</h2>
+      <p class="sec-lede">Tested, not promises. <a href="https://github.com/Cresavo/gateway/blob/main/docs/SECURITY_MODEL.md">Read the security model</a>.</p>
+    </header>
+    <ul class="never">
+      <li>Invent a booking result. No salon answer means no booking.</li>
+      <li>Reuse an access check across requests.</li>
+      <li>Forward browser sessions, cookies or client IP headers.</li>
+      <li>Store customer data, or log credentials or request bodies.</li>
+      <li>Take payments, export data or bulk delete.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CLOSE ============ -->
+<section class="close" aria-labelledby="h-close">
+  <div class="wrap close-in">
+    <h2 id="h-close">The code is on GitHub.</h2>
+    <div class="cta">
+      <a class="btn btn-main" href="https://github.com/Cresavo/gateway">View on GitHub</a>
+      <a class="tlink" href="https://github.com/Cresavo/gateway/security/advisories/new">Report a security issue <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</section>
 </main>
 
 <footer class="foot">
-  <div class="wrap">
-    <p>Cresavo Gateway is free software under <a href="https://github.com/Cresavo/gateway/blob/main/LICENSE">AGPL-3.0-only</a>. <a href="https://github.com/Cresavo/gateway">Source code</a> · <a href="/api/v1/openapi">OpenAPI</a> · <a href="/.well-known/usp">Discovery</a> · <a href="/llms.txt">llms.txt</a></p>
-    <p>No partner compatibility or assistant certification is implied.</p>
+  <div class="wrap foot-in mono">
+    <a href="https://github.com/Cresavo/gateway">github.com/Cresavo/gateway</a>
+    <a href="https://github.com/Cresavo/gateway/blob/main/LICENSE">LICENSE</a>
+    <a href="https://github.com/Cresavo/cresavo">Cresavo app repo</a>
+    <a href="https://cresavo.com">cresavo.com</a>
   </div>
 </footer>
 </body>
