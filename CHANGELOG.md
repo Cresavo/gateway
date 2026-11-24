@@ -28,7 +28,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
-- Redesigned the start page at `/` (still static, script-free and under the same Content-Security-Policy); the advertised endpoints are unchanged.
+- Start page at `/` reworked again: clearer hero with an assistant chat and approval card, assistants that speak MCP, three-step explainer, audiences, status and FAQ. Redesigned the start page at `/` (still static, script-free and under the same Content-Security-Policy); the advertised endpoints are unchanged.
 - npm package name `booking-lab-gateway` → `cresavo-gateway` (not published to npm; no runtime effect).
 - The published OpenAPI includes both proposal operations. The fixture now uses `pending` in place of `pending_consent`, `proposal.serviceId`, `serviceVersion`, `start` and `durationMinutes` move out of `proposal.terms`. Its `staffId` becomes `proposal.staff.id`, and its `priceMinor` becomes `proposal.price.amountMinor`. The former fixture-only `proposal.consentUrl` is removed. Legacy Cresavo uses top-level `approvalUrl`; separate delivery returns `approvalRequired` and `approvalDelivery`. Consent decisions use JSON at `/consent/{id}/decision` in place of the fixture's form POST at `/consent/{id}`.
 - The proposal read uses `booking_not_found` in place of the fixture's `not_found`. The customer decision route uses `consent_denied` in place of `proposal_expired` and `consent_code_invalid`. Missing mandates return 400 `mandate_required`. Unknown mandates return 403 `mandate_denied`. The fixture-only `/__fixture/*` routes and `x-fixture-owner` header were removed. Customer approval and operator controls are local test adapter functions.
