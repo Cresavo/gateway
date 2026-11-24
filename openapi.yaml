@@ -26,13 +26,12 @@ paths:
       x-required-scopes: ["bookings:write"]
       summary: Propose an exact booking in an explicitly enabled local consent lab
       description: |
-        No booking or authority is created. In server-configured separate-lab mode,
-        approvalRequired=true and approvalDelivery=separate-synthetic-customer are
-        returned; no approval URL, bearer token, inbox path or customer contact is
-        returned. The operator delivers approval through a private local test inbox.
-        The fixed server-owned synthetic customer cannot be selected through JSON.
-        Legacy local labs may return approvalUrl; that mode proves no independent
-        customer identity. Neither mode is available for a real customer deployment.
+        No booking or authority is created. The answer carries approvalRequired=true
+        and how the provider reaches the customer (approvalDelivery). A provider may
+        also return a consentUrl that carries no secret: the customer still proves who
+        they are on the provider's page, for Cresavo with a one-time code sent to their
+        own e-mail address, and the booking must then use that address. Nothing the
+        agent receives approves a booking by itself.
       requestBody:
         required: true
         content:
@@ -47,7 +46,6 @@ paths:
                 serviceVersion: { type: integer, minimum: 1 }
                 staffId: { type: string, minLength: 1, maxLength: 128 }
                 start: { type: string, format: date-time }
-                customerPhone: { type: string, maxLength: 32, description: Legacy simulated OTP lab only; rejected in separate-lab mode. }
       responses:
         "201": { description: Pending proposal, content: { application/json: { schema: { $ref: "#/components/schemas/CreatedProposal" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -120,9 +118,9 @@ paths:
         The server checks client, business, service, staff, complete treatment interval,
         current price cap, expiry, revocation and one-booking use. confirmed=true alone
         grants no authority. No agent API or MCP tool issues mandates.
-        Separate-lab customer mandates additionally bind the immutable synthetic
-        name/email shown in the customer confirmation. Changing contact is denied,
-        including after switching server delivery configuration.
+        A provider may bind the customer mandate to the contact that approved; for
+        Cresavo a booking for another e-mail address than the one that returned the
+        code is denied.
         The sandbox only accepts customer emails ending in @example.test. Retrying with the same
         Idempotency-Key and body returns the same booking (200, replayed=true). Engine limits apply:
         5 bookings per stable client per day, 3 per normalised customer email per day.
@@ -182,23 +180,24 @@ components:
     CreatedProposal:
       type: object
       additionalProperties: false
-      required: [proposal]
+      required: [proposal, approvalRequired, approvalDelivery]
       properties:
         proposal: { $ref: "#/components/schemas/Proposal" }
-        approvalUrl: { type: string, format: uri, description: Legacy local bearer link. }
         approvalRequired: { const: true }
-        approvalDelivery: { const: separate-synthetic-customer }
-      oneOf:
-        - required: [approvalUrl]
-          not: { anyOf: [{ required: [approvalRequired] }, { required: [approvalDelivery] }] }
-        - required: [approvalRequired, approvalDelivery]
-          not: { required: [approvalUrl] }
+        approvalDelivery: { type: string, enum: [separate-synthetic-customer, customer-email-code] }
+        consentUrl: { $ref: "#/components/schemas/ConsentUrl" }
     ProposalResponse:
       type: object
       additionalProperties: false
       required: [proposal]
       properties:
         proposal: { $ref: "#/components/schemas/Proposal" }
+        consentUrl: { $ref: "#/components/schemas/ConsentUrl" }
+    ConsentUrl:
+      type: string
+      format: uri
+      pattern: "^[^#?]+$"
+      description: The provider's consent page while the proposal is pending. It carries no secret and is safe to show to the person.
     Proposal:
       type: object
       additionalProperties: false

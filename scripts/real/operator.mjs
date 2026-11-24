@@ -12,6 +12,9 @@ import { createAgentApiKey } from "./src/lib/agent-api/keys.ts";
 import { checkSalonCalendar } from "./scripts/agentprov/salon-calendar.mts";
 import { assertTestDatabase } from "./scripts/test-db-guard.mjs";
 
+// The synthetic customer proves this address with the one-time code on the consent page.
+const customer = { name: "Syntetisk Kodkund", email: "gateway-customer@example.test" };
+
 export async function start({ serviceToken, salonPort, gatewayOrigin }) {
   assertTestDatabase();
   const salon = "http://127.0.0.1:" + salonPort;
@@ -22,7 +25,7 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
     env: { PATH: process.env.PATH, TMPDIR: tmpdir(), DATABASE_URL: process.env.DATABASE_URL, SESSION_SECRET: process.env.SESSION_SECRET,
       PORT: String(salonPort), GATEWAY_SERVICE_TOKEN: serviceToken, BOOKING_RUNTIME: "local",
       BOOKING_SERVICE_ROLE: "salon", BOOKING_PUBLIC_ORIGIN: salon, BOOKING_CONSENT_LAB: "1",
-      BOOKING_CONSENT_DELIVERY: "separate-lab", BOOKING_CONSENT_INBOX_DIR: inbox,
+      BOOKING_CONSENT_INBOX_DIR: inbox,
       RATE_LIMIT_STORE: "postgres", NEXT_TELEMETRY_DISABLED: "1" } });
   const exited = new Promise(resolve => child.once("exit", resolve));
   let browser;
@@ -45,13 +48,10 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
     browser = await chromium.launch();
   } catch (error) { await close(); throw error; }
 
+  // The customer opens the consent link (it carries no secret), types their own address and
+  // approves with the code from their inbox: the operator's private directory.
   async function approve(proposal, expired = false) {
-    const path = join(inbox, proposal.id + ".json");
-    const receipt = JSON.parse(await readFile(path, "utf8"));
-    await unlink(path);
-    const url = new URL(receipt.approvalUrl);
-    assert.ok(receipt.proposalId === proposal.id && receipt.customerSubject === "separate-lab-customer-v1");
-    assert.ok(url.origin === salon && url.pathname === "/consent/" + proposal.id && url.hash.length === 44);
+    const url = new URL("/consent/" + proposal.id, salon);
     const page = await browser.newPage();
     page.setDefaultTimeout(15000);
     try {
@@ -60,11 +60,9 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
       const response = await viewResponse;
       if (expired) {
         assert.equal(response.status(), 403);
-        // The UI discards unsuccessful response bodies. Verify the wire body
-        // independently through the customer endpoint with the same expired link.
+        // The UI discards unsuccessful response bodies. Verify the wire body independently.
         const denied = await page.request.post(salon + url.pathname + "/decision", {
-          headers: { origin: salon }, data: { decision: "view", token: url.hash.slice(1) },
-          maxRedirects: 0, timeout: 10000,
+          headers: { origin: salon }, data: { decision: "view" }, maxRedirects: 0, timeout: 10000,
         });
         assert.equal(denied.status(), 403);
         assert.deepEqual(await denied.json(), { error: "consent_denied" });
@@ -73,9 +71,16 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
         return;
       }
       assert.equal(response.status(), 200);
+      await page.getByLabel("Din e-postadress").fill(customer.email);
+      await page.getByRole("button", { name: "Skicka kod", exact: true }).click();
+      await page.getByLabel("Sexsiffrig engångskod").waitFor();
+      const path = join(inbox, proposal.id + ".json");
+      const receipt = JSON.parse(await readFile(path, "utf8"));
+      await unlink(path);
+      assert.ok(receipt.proposalId === proposal.id && /^[0-9]{6}$/.test(receipt.code));
+      await page.getByLabel("Sexsiffrig engångskod").fill(receipt.code);
       await page.getByRole("button", { name: "Ja, godkänn denna bokning", exact: true }).click();
       await page.getByText("Godkänt. Agenten kan nu slutföra exakt denna bokning.", { exact: false }).waitFor();
-      assert.ok(!new URL(page.url()).hash);
     } finally { await page.close(); }
   }
   async function owner(action, input = {}) {
@@ -103,5 +108,5 @@ export async function start({ serviceToken, salonPort, gatewayOrigin }) {
       default: throw new Error("Unknown test action");
     }
   }
-  return { salon, agentKey: agent.key, owner, approve, close };
+  return { salon, agentKey: agent.key, customer, owner, approve, close };
 }

@@ -150,10 +150,11 @@ export async function checkProvider({ origin, serviceToken, agentKey, business, 
       return record("proposal_created_pending", "fail", `POST /api/v1/proposals must return a pending proposal {proposal:{id, status:"pending"}} and no mandate; got ${result.status}.`);
     record("proposal_created_pending", "pass", `Pending proposal ${p.id} created; nothing is booked until the customer approves.`);
     const text = JSON.stringify(result.payload);
-    record("approval_link_stays_with_customer", /approvalUrl|\/consent\/|token/i.test(text) ? "warn" : "pass",
-      /approvalUrl|\/consent\/|token/i.test(text)
-        ? "The response seems to give the agent an approval link or token. The contract expects the provider to deliver approval to the customer directly."
-        : "The agent receives no approval link or token.");
+    // A consent link without a secret is fine: the customer still proves who they are on the provider's page.
+    const secret = /approvalUrl|token/i.test(text) || (text.match(/https?:[^"\s]*\/consent\/[^"\s]*/g) ?? []).some(link => /[#?]/.test(link));
+    record("approval_link_stays_with_customer", secret ? "warn" : "pass", secret
+      ? "The response seems to give the agent an approval token or a link that approves by itself. The contract expects approval to need something only the customer has."
+      : "The agent receives nothing that approves by itself.");
   });
 
   return results;

@@ -14,7 +14,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 import { start as startFixture } from "../test/e2e/fixture-provider.js";
 import { providerOrigin } from "../src/provider.js";
 
-// Defaults for the fixture and Cresavo's separate lab; an adapter may supply its own.
+// The fixture's synthetic customer; an adapter supplies its own (Cresavo's: the address that returns the code).
 const defaultCustomer = { name: "Separat Demokund", email: "separate-customer@example.test" };
 const future = new Date(Date.now() + 3 * 86400000);
 while ([0, 6].includes(future.getUTCDay())) future.setUTCDate(future.getUTCDate() + 1);
@@ -55,7 +55,7 @@ async function run() {
   const { salon, agentKey, owner, approve } = provider;
   const business = provider.business ?? "demo";
   const customer = provider.customer ?? defaultCustomer;
-  log("provider", hosted ? "deployed gateway / ordinary agent" : real ? "Cresavo / PostgreSQL / separate synthetic customer channel" : adapterPath ? "provider adapter" : "fictional separate-channel fixture");
+  log("provider", hosted ? "deployed gateway / ordinary agent" : real ? "Cresavo / PostgreSQL / one-time e-mail code consent" : adapterPath ? "provider adapter" : "fictional separate-channel fixture");
 
   const child = hosted ? undefined : spawn(process.execPath, [fileURLToPath(new URL("../src/server.js", import.meta.url))], {
     env: { PATH: process.env.PATH, PORT: String(port), SALON_ORIGIN: salon, GATEWAY_SERVICE_TOKEN: serviceToken },
@@ -97,19 +97,22 @@ async function run() {
         log("proposal refused", body.error.code);
       assert.equal(isError, false);
       assert.equal(body.approvalRequired, true);
-      // The provider delivers approval to the customer; the agent never holds a link or token.
-      assertPrivateDelivery(wire);
+      // The customer approves on the provider's side; the agent never holds anything that approves.
+      assertNoApprovalSecret(wire);
       assert.equal(body.proposal.status, "pending");
       assert.ok(!("mandateId" in body.proposal));
       return body.proposal;
     }
-    function assertPrivateDelivery(wire) {
-      assert.ok(!/approvalUrl|\/consent\/|\/sandbox\/phone|token/i.test(wire), "no approval link reaches the agent");
+    // A consent link may reach the agent (and the person through it) only if it carries no secret.
+    function assertNoApprovalSecret(wire) {
+      assert.ok(!/approvalUrl|\/sandbox\/phone|token/i.test(wire), "no approval token reaches the agent");
+      for (const link of wire.match(/https?:[^"\s]*\/consent\/[^"\s]*/g) ?? [])
+        assert.ok(!/[#?]/.test(link), "a consent link that reaches the agent carries no secret");
     }
     async function readProposal(proposalId) {
       const response = await call("get_proposal", { proposalId });
       assert.equal(response.isError, false);
-      assertPrivateDelivery(response.wire);
+      assertNoApprovalSecret(response.wire);
       return response.body.proposal;
     }
     const book = (start, mandateId, idempotencyKey = randomUUID()) => call("create_booking", {

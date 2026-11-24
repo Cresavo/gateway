@@ -12,7 +12,7 @@ const staff = { id: "staff-demo", name: "Anna" };
 const place = { locationId: business.locationId, scheduleId: "staff-schedule:" + staff.id };
 const customer = { name: "Separat Demokund", email: "separate-customer@example.test" };
 const scopes = ["services:read", "availability:read", "bookings:read", "bookings:write"];
-const bookingSchema = proposalSchema.omit({ customerPhone: true }).extend({
+const bookingSchema = proposalSchema.extend({
   confirmed: z.boolean(), mandateId: z.string().trim().min(1).max(128).optional(),
   customer: z.object({ name: z.string().trim().min(2).max(80), email: z.email().max(254) }).strict(),
 });
@@ -128,7 +128,7 @@ export async function start({ serviceToken, day }) {
       if (p.staffId !== staff.id) return fail("staff_not_found");
       const at = Date.parse(p.start), terms = snapshot(p.start);
       if (!("confirmed" in p)) {
-        if ("customerPhone" in p || at <= Date.now()) return fail("invalid_request");
+        if (at <= Date.now()) return fail("invalid_request");
         const id = randomUUID();
         const row = { id, status: "pending", ...terms, expiresAt: new Date(Math.min(at, Date.now() + 600000)).toISOString() };
         proposals.set(id, { token: randomBytes(32).toString("base64url"), proposal: row });
