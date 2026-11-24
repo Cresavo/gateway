@@ -127,29 +127,31 @@ export async function start({ serviceToken, day }) {
       if (p.serviceVersion !== service.version) return fail("stale_service");
       if (p.staffId !== staff.id) return fail("staff_not_found");
       const at = Date.parse(p.start), terms = snapshot(p.start);
-      if (!("confirmed" in p)) {
+      if (proposal) {
         if (at <= Date.now()) return fail("invalid_request");
         const id = randomUUID();
         const row = { id, status: "pending", ...terms, expiresAt: new Date(Math.min(at, Date.now() + 600000)).toISOString() };
         proposals.set(id, { token: randomBytes(32).toString("base64url"), proposal: row });
         return ok({ proposal: row, approvalRequired: true, approvalDelivery: "separate-synthetic-customer" }, 201);
       }
+      // The booking route parsed bookingSchema above.
+      const b = /** @type {z.infer<typeof bookingSchema>} */ (p);
       const idempotencyKey = req.headers["idempotency-key"];
       if (typeof idempotencyKey !== "string" || !/^[\w-]{1,64}$/.test(idempotencyKey)) return fail("idempotency_key_required");
-      if (!p.confirmed) return fail("confirmation_required");
-      if (!p.customer.email.toLowerCase().endsWith("@example.test")) return fail("synthetic_contact_required");
-      if (!p.mandateId) return fail("mandate_required");
+      if (!b.confirmed) return fail("confirmation_required");
+      if (!b.customer.email.toLowerCase().endsWith("@example.test")) return fail("synthetic_contact_required");
+      if (!b.mandateId) return fail("mandate_required");
       const previous = retries.get(idempotencyKey);
-      if (previous) return previous.request === JSON.stringify(p) ? ok({ apiVersion: "v1", booking: previous.booking, replayed: true }) : fail("idempotency_conflict");
-      const m = mandates.get(p.mandateId);
+      if (previous) return previous.request === JSON.stringify(b) ? ok({ apiVersion: "v1", booking: previous.booking, replayed: true }) : fail("idempotency_conflict");
+      const m = mandates.get(b.mandateId);
       if (!m || m.used || m.hash !== hash(terms) || m.expiresAt <= Date.now() ||
-          p.customer.name !== customer.name || p.customer.email !== customer.email) return fail("mandate_denied");
+          b.customer.name !== customer.name || b.customer.email !== customer.email) return fail("mandate_denied");
       if (taken.has(at) || !starts.some(s => Date.parse(s) === at)) return fail("slot_unavailable");
       const booking = { id: randomUUID(), status: "confirmed", start: local(at), end: local(at + service.durationMinutes * 60000),
         durationMinutes: service.durationMinutes, serviceId: service.id, serviceName: service.name, staff, ...place, version: 1,
         createdAt: local(Date.now()) };
       bookings.set(booking.id, booking);
-      retries.set(idempotencyKey, { request: JSON.stringify(p), booking });
+      retries.set(idempotencyKey, { request: JSON.stringify(b), booking });
       m.used = true;
       taken.add(at);
       return ok({ apiVersion: "v1", booking, replayed: false }, 201);
