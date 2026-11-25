@@ -56,7 +56,7 @@ The gateway sends only these routes. It never sends admin, owner, payment, expor
 Third-party writes are propose and approve. This is the heart of the contract.
 
 1. **Propose.** `POST /api/v1/proposals` records exact terms: service and version, staff, start, duration and price. It MUST NOT reserve the slot or create a mandate.
-2. **Deliver to the customer.** The provider delivers the approval request to the customer through its own channel (SMS, email, app). The response to the agent MUST NOT contain the approval link or any token that can approve. The gateway is never on this path.
+2. **Reach the customer.** The provider reaches the customer through its own channel (SMS, email, app). The response to the agent MUST NOT contain anything that approves by itself: no token and no link with a secret in it. A `consentUrl` without a secret is allowed, because the customer still proves who they are on the provider's page; Cresavo sends a one-time code to the address the customer types there. The gateway is never on the approval path.
 3. **Approve.** When the customer approves, the provider creates a mandate bound to those exact terms. A hash over business, agent client, service, staff, location, start, duration and price is a good way to bind it.
 4. **Book.** `POST /api/v1/bookings` carries the `mandateId`. The provider MUST check, at that moment:
    - the mandate exists, belongs to this agent and has not been used: otherwise `403 mandate_denied`

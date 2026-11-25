@@ -4,7 +4,6 @@ const id = z.string().trim().min(1).max(128);
 export const proposalSchema = z.object({
   business: id, serviceId: id, serviceVersion: z.number().int().positive(),
   staffId: id, start: z.iso.datetime({ offset: true }),
-  customerPhone: z.string().max(32).optional(),
 }).strict();
 
 const business = z.string().describe("Business id authorised by the configured API key.");

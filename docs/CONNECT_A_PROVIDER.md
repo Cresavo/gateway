@@ -18,7 +18,7 @@ This starts the in-memory reference provider (`test/e2e/fixture-provider.js`) an
 Implement the seven routes in [PROVIDER_CONTRACT.md](PROVIDER_CONTRACT.md) in your system. The parts that matter most:
 
 - Check both the gateway's service token and the agent's credential on every route.
-- Never give the agent the customer's approval link. Deliver it to the customer yourself.
+- Never give the agent anything that approves by itself. A consent link without a secret is fine if the customer must still prove who they are on your page.
 - Bind each mandate to the exact terms, and check it again when the booking is created.
 - Require `Idempotency-Key` for bookings.
 

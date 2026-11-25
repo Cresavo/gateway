@@ -10,7 +10,7 @@ if [[ ${1:-} != --isolated ]]; then
     E2E_POSTGRES_PORT="${E2E_POSTGRES_PORT:-}" bash "$0" --isolated
 fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
-revision=ffbfc48e2299bb4854eba71698468f9745d61b99
+revision=3943580a001b8f4b5b76a43ec410e1adee264cf6
 scratch=$(mktemp -d /tmp/cresavo-e2e.XXXXXXXX)
 db_name="gateway_$(openssl rand -hex 8)_test"
 started_db=0
