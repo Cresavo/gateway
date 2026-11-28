@@ -8,7 +8,7 @@ All data in this repository is fictional. The demo salon "Salong Eko" does not e
 
 ## What this is
 
-Cresavo is open-source booking software for small service businesses. This repository is its agent-facing front door: the part that lets a customer's AI assistant (ChatGPT, Claude, Grok or any MCP client) discover a salon, read its treatments and free times, and *propose* a booking. The assistant never books on its own. The customer approves on the salon's consent page, and the salon books only within what was approved.
+Cresavo is open-source booking software for small service businesses. This repository is its agent-facing front door: the part that lets a customer's AI assistant (ChatGPT, Claude, Grok or any MCP client) discover a salon, read its treatments and free times, and *propose* a booking. The assistant never books on its own: it proposes, the customer approves through the provider's own channel (for Cresavo, the salon's consent page), and the booking is created only within what was approved.
 
 | | |
 |---|---|
