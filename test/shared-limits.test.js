@@ -6,7 +6,7 @@ import { createServer } from "node:http";
 import { test } from "node:test";
 import { gateway } from "../src/server.js";
 import { loadConfig } from "../src/config.js";
-import { sharedRateLimiter } from "../src/shared-limits.js";
+import { sharedRateLimiter, providerNamespace } from "../src/shared-limits.js";
 
 const serviceToken = randomBytes(32).toString("hex");
 // CI installs redis-server; locally the store tests skip without it.
@@ -111,4 +111,55 @@ test("every route awaits the limiter, so an asynchronous store serves pages and 
   assert.equal(limited.status, 429);
   assert.equal(limited.headers.get("retry-after"), "7");
   assert.deepEqual(seen, ["read", "read", "read", "read"]);
+});
+
+test("different provider origins have independent shared limits", async () => {
+  const counts = new Map();
+  const redis = {
+    on() {},
+    async eval(_script, keyCount, ...args) {
+      const keys = args.slice(0, keyCount);
+      if (keys.some(key => (counts.get(key) ?? 0) >= 1)) return 60_000;
+      for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1);
+      return 0;
+    },
+  };
+  const limits = { read: { limit: 1, windowMs: 60_000 }, proposal_create: { limit: 1, windowMs: 60_000 },
+    booking_create: { limit: 1, windowMs: 60_000 } };
+  const a = sharedRateLimiter("redis://127.0.0.1:1", { limits, redis, namespace: providerNamespace("http://127.0.0.1:1") });
+  const b = sharedRateLimiter("redis://127.0.0.1:1", { limits, redis, namespace: providerNamespace("http://127.0.0.1:2") });
+  for (const bucket of ["read", "booking_create", "proposal_create"]) {
+    assert.equal((await a("203.0.113.9", [bucket])).ok, true);
+    assert.equal((await a("203.0.113.9", [bucket])).ok, false);
+    assert.equal((await b("203.0.113.9", [bucket])).ok, true);
+  }
+  assert.equal(providerNamespace("http://127.0.0.1:1/"), providerNamespace("http://127.0.0.1:1"));
+});
+
+
+test("gateway configuration shares limits by provider origin", { skip: !hasRedis && "redis-server not installed" }, async t => {
+  const url = await startRedis(t);
+  const script = `
+    import { gateway } from "./src/server.js";
+    const limits = { read: { limit: 1, windowMs: 60000 }, proposal_create: { limit: 1, windowMs: 60000 },
+      booking_create: { limit: 1, windowMs: 60000 } };
+    const options = { rateLimitStoreUrl: process.argv[1], limits };
+    const servers = ["http://127.0.0.1:1", "http://127.0.0.1:1/", "http://127.0.0.1:2"]
+      .map(origin => gateway(origin, "a".repeat(64), options));
+    await Promise.all(servers.map(server => new Promise(resolve => server.listen(0, "127.0.0.1", resolve))));
+    process.send(servers.map(server => "http://127.0.0.1:" + server.address().port));
+  `;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", script, url], { stdio: ["ignore", "ignore", "pipe", "ipc"] });
+  t.after(() => { child.kill(); });
+  const bases = await new Promise((resolve, reject) => {
+    child.once("message", resolve);
+    child.once("error", reject);
+    child.once("exit", code => reject(new Error("gateway process exited: " + code)));
+  });
+  // Wait for the Redis clients to connect before testing shared admission.
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal((await fetch(bases[0] + "/llms.txt")).status, 200);
+  assert.equal((await fetch(bases[1] + "/llms.txt")).status, 429);
+  assert.equal((await fetch(bases[2] + "/llms.txt")).status, 200);
+  assert.equal((await fetch(bases[2] + "/llms.txt")).status, 429);
 });

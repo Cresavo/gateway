@@ -2,6 +2,7 @@
 // Rate limits shared by every gateway instance through Redis (or any server that
 // speaks the Redis protocol, such as Valkey). Works on Vercel, on a container
 // host or on a single machine. Same windows and semantics as the in-memory limiter.
+import { createHash } from "node:crypto";
 import { Redis } from "ioredis";
 import { defaultLimits, rateLimiter } from "./limits.js";
 
@@ -30,18 +31,22 @@ return 0
 const PREFIX = "cresavo-gateway:rl:v1:";
 const CREATE_BUCKETS = new Set(["booking_create", "proposal_create"]);
 
+export function providerNamespace(salon) {
+  return createHash("sha256").update(new URL(salon).origin).digest("hex").slice(0, 32);
+}
+
 // When the store cannot answer: reads fall back to this instance's own limiter,
 // creates are refused. A store outage must never lift the write limits.
-/** @param {string} url @param {{ limits?: typeof defaultLimits }} [options] */
-export function sharedRateLimiter(url, { limits = defaultLimits } = {}) {
-  const redis = new Redis(url, {
+/** @param {string} url @param {{ limits?: typeof defaultLimits, namespace?: string, redis?: Redis }} [options] */
+export function sharedRateLimiter(url, { limits = defaultLimits, namespace = "default", redis: client } = {}) {
+  const redis = client ?? new Redis(url, {
     enableOfflineQueue: false, maxRetriesPerRequest: 1, commandTimeout: 500, connectTimeout: 2000,
   });
   // Without a listener ioredis prints errors, which can include the connection URL.
   redis.on("error", () => {});
   const local = rateLimiter(limits);
   async function take(ip, buckets) {
-    const keys = buckets.map(bucket => PREFIX + bucket + ":" + ip);
+    const keys = buckets.map(bucket => PREFIX + namespace + ":" + bucket + ":" + ip);
     const args = buckets.flatMap(bucket => [limits[bucket].limit, limits[bucket].windowMs]);
     try {
       const retryMs = Number(await redis.eval(TAKE, keys.length, ...keys, ...args));
