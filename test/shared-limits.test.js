@@ -135,3 +135,31 @@ test("different provider origins have independent shared limits", async () => {
   }
   assert.equal(providerNamespace("http://127.0.0.1:1/"), providerNamespace("http://127.0.0.1:1"));
 });
+
+
+test("gateway configuration shares limits by provider origin", { skip: !hasRedis && "redis-server not installed" }, async t => {
+  const url = await startRedis(t);
+  const script = `
+    import { gateway } from "./src/server.js";
+    const limits = { read: { limit: 1, windowMs: 60000 }, proposal_create: { limit: 1, windowMs: 60000 },
+      booking_create: { limit: 1, windowMs: 60000 } };
+    const options = { rateLimitStoreUrl: process.argv[1], limits };
+    const servers = ["http://127.0.0.1:1", "http://127.0.0.1:1/", "http://127.0.0.1:2"]
+      .map(origin => gateway(origin, "a".repeat(64), options));
+    await Promise.all(servers.map(server => new Promise(resolve => server.listen(0, "127.0.0.1", resolve))));
+    process.send(servers.map(server => "http://127.0.0.1:" + server.address().port));
+  `;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", script, url], { stdio: ["ignore", "ignore", "pipe", "ipc"] });
+  t.after(() => { child.kill(); });
+  const bases = await new Promise((resolve, reject) => {
+    child.once("message", resolve);
+    child.once("error", reject);
+    child.once("exit", code => reject(new Error("gateway process exited: " + code)));
+  });
+  // Wait for the Redis clients to connect before testing shared admission.
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal((await fetch(bases[0] + "/llms.txt")).status, 200);
+  assert.equal((await fetch(bases[1] + "/llms.txt")).status, 429);
+  assert.equal((await fetch(bases[2] + "/llms.txt")).status, 200);
+  assert.equal((await fetch(bases[2] + "/llms.txt")).status, 429);
+});

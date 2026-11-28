@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
+import { createServer, request } from "node:http";
 import { test } from "node:test";
 import { gateway } from "../src/server.js";
 import { providerOrigin } from "../src/provider.js";
@@ -264,4 +264,22 @@ test("malformed and oversized request bodies consume the per-IP read limit", asy
     assert.equal(refused.status, 429);
     assert.ok(Number(refused.headers.get("retry-after")) > 0);
   }
+});
+
+
+test("an exhausted client is rejected before its request body is complete", async t => {
+  const limits = { read: { limit: 1, windowMs: 60_000 }, proposal_create: { limit: 5, windowMs: 60_000 },
+    booking_create: { limit: 5, windowMs: 60_000 } };
+  const base = await listen(t, gateway("http://127.0.0.1:1", serviceToken, { limits }));
+  assert.equal((await fetch(base + "/api/v1/mcp", { method: "POST", body: "{" })).status, 400);
+  const response = await new Promise((resolve, reject) => {
+    const req = request(base + "/api/v1/mcp", { method: "POST", headers: { "content-length": "100" } }, resolve);
+    req.on("error", reject);
+    req.setTimeout(5000, () => { req.destroy(new Error("response arrived only after waiting for the body")); });
+    req.write("{");
+    t.after(() => req.destroy());
+  });
+  assert.equal(response.statusCode, 429);
+  assert.ok(Number(response.headers["retry-after"]) > 0);
+  response.resume();
 });
