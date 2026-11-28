@@ -72,10 +72,10 @@ The agent creates a proposal with `business`, `serviceId`, positive `serviceVers
 The accepted website API design specifies 60 reads/minute per IP, 600/minute per salon, 5 creates/hour per IP, 30/hour per salon and three active bookings per contact. Owner-token targets are 120/minute and 10,000/day, and export is limited to two/day. Those salon-wide, active-contact, owner and export targets describe different interfaces. The split v1 engine applies the budgets above. An upstream 429 retains its `Retry-After` over REST. Gateway admission failures use HTTP 429 on both transports; a tool-level provider error in an MCP result has no HTTP retry header.
 
 - Client IP: the socket address on loopback; behind a proxy, the entry `GATEWAY_TRUST_PROXY_HOPS` positions from the right of `X-Forwarded-For`. Entries further left are client-controlled and ignored.
-- MCP requests carry exactly one JSON-RPC message. Batches (JSON arrays) and unparsable bodies get 400 before any limit or salon call. The gateway parses the body once (a leading BOM is removed) and forwards the re-serialised message, so the limiter, the scope check and the MCP handler always see the same call.
+- MCP requests carry exactly one JSON-RPC message. Batches (JSON arrays) and unparsable bodies consume the read limit and get 400 before any salon call. The gateway parses the body once (a leading BOM is removed) and forwards the re-serialised message, so the limiter, the scope check and the MCP handler always see the same call.
 - IPv4-mapped IPv6 addresses are unmapped and IPv6 clients are keyed per /64. An invalid `X-Forwarded-For` entry falls back to the socket address.
 - The counter table is capped at 100 000 live keys. When it is full of live windows, new clients get 429 (fail closed) instead of memory growing.
-- Counters are in memory, per process, unless `GATEWAY_RATE_LIMIT_REDIS_URL` names a shared Redis-protocol store. With the store, every instance checks and counts atomically in one Lua script. If the store does not answer, reads fall back to per-instance counters and creates are refused with 429. Hosts that may run several instances must set `GATEWAY_REQUIRE_SHARED_LIMITS=1`; the process then refuses to start without a store. The store URL holds a password: it must use TLS (`rediss://`) off loopback, and it is never logged or echoed in errors. Keys hold only the bucket name and the client IP key and expire with their window.
+- Counters are in memory, per process, unless `GATEWAY_RATE_LIMIT_REDIS_URL` names a shared Redis-protocol store. With the store, every instance checks and counts atomically in one Lua script. If the store does not answer, reads fall back to per-instance counters and creates are refused with 429. Hosts that may run several instances must set `GATEWAY_REQUIRE_SHARED_LIMITS=1`; the process then refuses to start without a store. The store URL holds a password: it must use TLS (`rediss://`) off loopback, and it is never logged or echoed in errors. Keys contain a hash of the provider origin, the bucket name and the client IP key, and expire with their window. Gateways using the same provider origin share quotas; different origins have independent quotas.
 - Idempotency: booking creation requires `Idempotency-Key`; the salon stores the result. On timeout or 503 the client must retry with the **same** key. Retries count against the gateway's create limit; 5/hour leaves room for normal retries.
 
 ## 6. Untrusted text
@@ -107,7 +107,7 @@ The strict split-v1 booking input has no note field. Its response projection omi
 | Credential leak through redirects | `redirect: "error"`. |
 | Request smuggling of other salon routes | Allow-list of paths and methods; `//`, `\` and `#` refused. |
 | Oversized bodies | 64 KiB limit on gateway and MCP handler. |
-| Rate-limit bypass through JSON-RPC batches or parser differences | One message per request; parsed once and re-serialised before limiting and dispatch. |
+| Rate-limit bypass through JSON-RPC batches or parser differences | One message per request; parsed once and re-serialised before create classification and dispatch. |
 | Prompt injection via customer text | Split v1 omits notes and contact details from booking results (section 6). |
 | Spoofed client IP to dodge limits | Only the trusted proxy hop of `X-Forwarded-For` is used. |
 

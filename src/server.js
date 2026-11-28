@@ -7,7 +7,7 @@ import { nativeMcpSchema } from "./mcp-inputs.js";
 import { uspProfile, llmsText } from "./discovery.js";
 import { allowedRoute, connectProvider, errorReply } from "./provider.js";
 import { classify, defaultLimits, parseMcpBody, rateLimiter } from "./limits.js";
-import { sharedRateLimiter } from "./shared-limits.js";
+import { providerNamespace, sharedRateLimiter } from "./shared-limits.js";
 import { clientAddress, loadConfig } from "./config.js";
 
 // options.publicOrigin: the https origin clients use (remote mode only).
@@ -17,7 +17,7 @@ import { clientAddress, loadConfig } from "./config.js";
 export function gateway(salon, serviceToken, options = {}) {
   const provider = connectProvider(salon, serviceToken);
   const take = options.take ?? (options.rateLimitStoreUrl
-    ? sharedRateLimiter(options.rateLimitStoreUrl, { limits: options.limits ?? defaultLimits })
+    ? sharedRateLimiter(options.rateLimitStoreUrl, { limits: options.limits ?? defaultLimits, namespace: providerNamespace(salon) })
     : rateLimiter(options.limits ?? defaultLimits, options.now));
   const hops = options.trustProxyHops ?? 0;
   return createServer(async (req, res) => {
@@ -61,6 +61,8 @@ export function gateway(salon, serviceToken, options = {}) {
       const schema = req.method === "GET" && url.pathname === "/api/v1/mcp/schema";
       if (!mcp && !schema && !allowedRoute(req.method, url.pathname))
         return await send(errorReply(404, "not_found", "Unknown gateway operation."));
+      const readVerdict = await take(ip, ["read"]);
+      if (!readVerdict.ok) return await send(limited(readVerdict.retryAfter));
       const chunks = [];
       let size = 0;
       for await (const chunk of req) {
@@ -77,8 +79,11 @@ export function gateway(salon, serviceToken, options = {}) {
         if (!rpc) return await send(errorReply(400, "invalid_request", "Send one JSON-RPC message per request."));
         body = Buffer.from(JSON.stringify(rpc));
       }
-      const verdict = await take(ip, classify(req.method, url.pathname, rpc));
-      if (!verdict.ok) return await send(limited(verdict.retryAfter));
+      const createBuckets = classify(req.method, url.pathname, rpc).filter(bucket => bucket !== "read");
+      if (createBuckets.length) {
+        const verdict = await take(ip, createBuckets);
+        if (!verdict.ok) return await send(limited(verdict.retryAfter));
+      }
       const headers = new Headers();
       for (const [name, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(name, value);
       const call = provider(headers);

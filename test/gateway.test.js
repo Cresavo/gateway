@@ -252,3 +252,16 @@ test("malformed salon success documents fail closed at the correct hop", async t
   assert.equal(operation.status, 502);
   assert.equal((await operation.json()).error.code, "provider_invalid_response");
 });
+
+test("malformed and oversized request bodies consume the per-IP read limit", async t => {
+  for (const body of ["{", "x".repeat(70000)]) {
+    const limits = { read: { limit: 2, windowMs: 60_000 }, proposal_create: { limit: 5, windowMs: 60_000 },
+      booking_create: { limit: 5, windowMs: 60_000 } };
+    const base = await listen(t, gateway("http://127.0.0.1:1", serviceToken, { limits }));
+    const post = () => fetch(base + "/api/v1/mcp", { method: "POST", body });
+    for (let i = 0; i < 2; i++) assert.equal((await post()).status, body === "{" ? 400 : 413);
+    const refused = await post();
+    assert.equal(refused.status, 429);
+    assert.ok(Number(refused.headers.get("retry-after")) > 0);
+  }
+});

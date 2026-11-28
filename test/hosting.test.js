@@ -104,8 +104,7 @@ test("limits answer 429 with Retry-After before the salon is contacted", async t
   assert.equal(refused.headers.get("retry-after"), "3600");
   assert.equal((await refused.json()).error.code, "rate_limited");
   assert.equal(hits, 2, "refused create never reached the salon");
-  assert.equal((await fetch(base + "/.well-known/usp")).status, 200);
-  assert.equal((await fetch(base + "/.well-known/usp")).status, 429);
+  assert.equal((await fetch(base + "/.well-known/usp")).status, 429, "the refused create consumed the read quota");
   time = 61_000;
   assert.equal((await fetch(base + "/.well-known/usp")).status, 200);
 });
