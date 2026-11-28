@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- The shared rate-limit store holds an HMAC-SHA256 digest of each client address instead of the address. A remote store now requires `GATEWAY_RATE_LIMIT_KEY_SECRET`, and the gateway refuses to start without it. The key prefix moves to `v2`, so old keys simply expire.
+
 ### Added
 
 - `GATEWAY_LOOPBACK_TEST_LIMITS=1` raises per-IP limits for local cross-repository proofs and is refused when hosted or using a shared store.

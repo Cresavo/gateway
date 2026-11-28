@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { gateway } from "../src/server.js";
 import { loadConfig } from "../src/config.js";
 import { sharedRateLimiter } from "../src/shared-limits.js";
+import { Redis } from "ioredis";
 
 const serviceToken = randomBytes(32).toString("hex");
 // CI installs redis-server; locally the store tests skip without it.
@@ -94,8 +95,15 @@ test("shared limits are required on Vercel and the store URL is validated withou
   for (const value of [`redis://user:${secret}@cache.example.test:6379`, `http://user:${secret}@cache.example.test`, "not a url"]) {
     assert.throws(() => loadConfig({ ...remote, GATEWAY_RATE_LIMIT_REDIS_URL: value }), error => !String(error.message).includes(secret));
   }
-  const ok = loadConfig({ ...remote, VERCEL: "1", GATEWAY_RATE_LIMIT_REDIS_URL: `rediss://default:${secret}@cache.example.test:6379` });
+  const store = { GATEWAY_RATE_LIMIT_REDIS_URL: `rediss://default:${secret}@cache.example.test:6379` };
+  assert.throws(() => loadConfig({ ...remote, VERCEL: "1", ...store }), /GATEWAY_RATE_LIMIT_KEY_SECRET/);
+  const shortKey = "short-" + secret;
+  assert.throws(() => loadConfig({ ...remote, VERCEL: "1", ...store, GATEWAY_RATE_LIMIT_KEY_SECRET: shortKey }),
+    error => /GATEWAY_RATE_LIMIT_KEY_SECRET/.test(error.message) && !error.message.includes(shortKey));
+  const keySecret = "a".repeat(64);
+  const ok = loadConfig({ ...remote, VERCEL: "1", ...store, GATEWAY_RATE_LIMIT_KEY_SECRET: keySecret });
   assert.ok(ok.options.rateLimitStoreUrl.startsWith("rediss://"));
+  assert.equal(ok.options.rateLimitKeySecret, keySecret);
   assert.equal(loadConfig({ SALON_ORIGIN: "http://127.0.0.1:3217", GATEWAY_RATE_LIMIT_REDIS_URL: "redis://127.0.0.1:6379" })
     .options.rateLimitStoreUrl, "redis://127.0.0.1:6379");
   assert.deepEqual(loadConfig({ SALON_ORIGIN: "http://127.0.0.1:3217" }).options, {});
@@ -111,4 +119,28 @@ test("every route awaits the limiter, so an asynchronous store serves pages and 
   assert.equal(limited.status, 429);
   assert.equal(limited.headers.get("retry-after"), "7");
   assert.deepEqual(seen, ["read", "read", "read", "read"]);
+});
+
+test("the store holds only keyed digests of client addresses, shared by instances with the same key", { skip: !hasRedis && "redis-server not installed" }, async t => {
+  const url = await startRedis(t);
+  const limits = { read: { limit: 2, windowMs: 60_000 }, proposal_create: { limit: 1, windowMs: 3_600_000 },
+    booking_create: { limit: 1, windowMs: 3_600_000 } };
+  const keySecret = randomBytes(32).toString("hex");
+  const a = sharedRateLimiter(url, { limits, keySecret });
+  const b = sharedRateLimiter(url, { limits, keySecret });
+  const other = sharedRateLimiter(url, { limits, keySecret: randomBytes(32).toString("hex") });
+  const inspect = new Redis(url);
+  t.after(() => Promise.all([a.close(), b.close(), other.close(), inspect.quit()]));
+  await new Promise(resolve => setTimeout(resolve, 100));
+  const ip = "203.0.113.77";
+  assert.equal((await a(ip, ["read"])).ok, true);
+  assert.equal((await b(ip, ["read"])).ok, true);
+  assert.equal((await a(ip, ["read"])).ok, false, "both instances count against one window");
+  assert.equal((await other(ip, ["read"])).ok, true, "a different key gives unrelated counters");
+  const keys = await inspect.keys("*");
+  assert.ok(keys.length > 0);
+  for (const key of keys) {
+    assert.match(key, /^cresavo-gateway:rl:v2:read:[A-Za-z0-9_-]{22}$/);
+    assert.ok(!key.includes(ip) && !key.includes("203.0.113"), "no client address in the store");
+  }
 });

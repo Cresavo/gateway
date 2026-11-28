@@ -25,6 +25,7 @@ Any host that runs a Docker image, gives HTTPS on a custom domain, and can pin t
 The owner chose to run the demo as its own project in the same Vercel team as the Cresavo site. The same `Dockerfile` serves every host; `vercel.json` only selects the container preset. Vercel may run several instances, so shared rate limits are mandatory there:
 
 - Set `GATEWAY_RATE_LIMIT_REDIS_URL` to a `rediss://` URL (any Redis-protocol store: Redis, Valkey, a Vercel Marketplace Redis integration). It is a secret.
+- Set `GATEWAY_RATE_LIMIT_KEY_SECRET` to 64 random hex characters. It is a secret. The store then holds only keyed digests of client addresses, never the addresses. Changing it starts every counter afresh.
 - Set `GATEWAY_REQUIRE_SHARED_LIMITS=1`. The process also requires the store when it sees Vercel's `VERCEL` variable, but the explicit flag does not depend on that.
 - Set the remote flags below, with `GATEWAY_PUBLIC_ORIGIN=https://gateway.cresavo.com` and `GATEWAY_TRUST_PROXY_HOPS=1` (Vercel sends the client address in `X-Forwarded-For`).
 - Host pinning refuses Vercel's own `*.vercel.app` deployment URLs. Only the custom domain serves requests, plus `/healthz`.
@@ -54,6 +55,7 @@ All flags are explicit. Without them the gateway binds to `127.0.0.1` and refuse
 | `GATEWAY_TRUST_PROXY_HOPS` | must be unset or `0` | `1` for one proxy in front |
 | `GATEWAY_RATE_LIMIT_REDIS_URL` | optional, `redis://` on loopback | `rediss://…`, required with more than one instance. Secret. |
 | `GATEWAY_REQUIRE_SHARED_LIMITS` | unset | `1` where the host may run several instances |
+| `GATEWAY_RATE_LIMIT_KEY_SECRET` | optional with a loopback store | 64 random hex characters, required with a remote store. HMAC key so the store never sees client addresses. Same value on every instance. Secret. |
 
 Locally, use `127.0.0.1`, not `localhost`: the Host check accepts only the exact origin.
 
