@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/*
+  Light, warm, restrained. One accent (clay). Maturity is shown by shape, not colour:
+  filled = verified locally, half = experimental, ring = planned.
+  Token names are semantic: "ink" is the page, "fg" is text.
+*/
+@theme {
+  --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Salon page tokens (see DESIGN.md). Components use these variables only. */
+  --font-display: var(--font-display-face), var(--font-sans-face), sans-serif;
+  --color-paper: #f7f7f4;
+  --color-surface: #ffffff;
+  --color-text: #1b211f;
+  --color-quiet: #58615d;
+  --color-spruce: #20403a;
+  --color-lingon: #b3203d;
+  --color-rule: #dcd8d0;
+  --color-birch: #eae4da;
+  --color-spruce-soft: #e3ebe7;
+  --color-lingon-hover: #961a33;
+  --shadow-overlay: 0 18px 40px -20px rgb(27 33 31 / 0.35), 0 2px 6px rgb(27 33 31 / 0.06);
+
+  --color-ink: #f6f4ef;      /* page */
+  --color-ink-2: #ffffff;    /* raised surface */
+  --color-panel: #efece5;    /* sunken surface */
+  --color-panel-2: #e8e4db;
+  --color-line: #e3dfd5;
+  --color-line-strong: #d3cec2;
+  --color-fg: #161513;
+  --color-muted: #57544d;
+  --color-faint: #77736a;
+
+  --color-ok: #a5472a;       /* the one accent: muted clay */
+  --color-ok-dim: #f3e5de;
+  --color-exp: #8a6a2b;
+  --color-exp-dim: #f2ebdc;
+  --color-plan: #77736a;
+  --color-plan-dim: #efece5;
+
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-blink: blink 1.2s ease-in-out infinite;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 1; }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-ink);
+    color: var(--color-fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01";
+  }
+  ::selection { background: #ecd4c8; color: var(--color-fg); }
+  :focus-visible {
+    outline: 2px solid var(--color-fg);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--color-muted);
+  }
+  /* Invisible 44px hit area around small controls, without changing how they look. */
+  .hit { position: relative; }
+  .hit::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .card {
+    border: 1px solid var(--color-line);
+    background: var(--color-ink-2);
+    border-radius: 14px;
+  }
+  .surface-shadow {
+    box-shadow: 0 1px 0 rgb(22 21 19 / 0.03), 0 12px 32px -18px rgb(22 21 19 / 0.18);
+  }
+  .code-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+}
+
+/*
+  "How it works" draws itself as the figure scrolls through the viewport.
+  One named view timeline on the figure; each piece has its own --from/--to range,
+  with a deliberate gap after the customer's approval. Browsers without scroll-driven
+  animations, visitors who prefer reduced motion, and print see the finished figure.
+*/
+@media screen and (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /* Top inset: the timeline finishes 40% below the top of the viewport, so the last
+       piece is drawn while the whole row, approval card included, is still on screen. */
+    .path-figure { view-timeline: --path block; view-timeline-inset: 40% 0%; }
+    .path-step, .path-gate, .path-draw-x, .path-draw-y {
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --path;
+      animation-range: var(--from, cover 0%) var(--to, cover 30%);
+    }
+    .path-step { animation-name: path-reveal; }
+    .path-gate { animation-name: path-gate; }
+    .path-draw-x { animation-name: path-draw-x; transform-origin: left center; }
+    .path-draw-y { animation-name: path-draw-y; transform-origin: center top; }
+    /* One column on smaller screens: each piece follows its own position instead. */
+    @media (max-width: 1023px) {
+      .path-step, .path-gate, .path-draw-x, .path-draw-y {
+        animation-timeline: view();
+        animation-range: entry 10% cover 40%;
+      }
+    }
+  }
+}
+@keyframes path-reveal {
+  from { opacity: 0.12; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes path-gate {
+  0% { opacity: 0.12; transform: translateY(10px) scale(0.98); box-shadow: 0 0 0 0 rgb(165 71 42 / 0); }
+  60% { opacity: 1; transform: none; box-shadow: 0 0 0 10px rgb(165 71 42 / 0.12); }
+  100% { opacity: 1; transform: none; box-shadow: 0 0 0 0 rgb(165 71 42 / 0); }
+}
+@keyframes path-draw-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes path-draw-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
