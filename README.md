@@ -13,8 +13,8 @@ Cresavo is open-source booking software for small service businesses. This repos
 | | |
 |---|---|
 | **Interfaces** | REST v1 (OpenAPI 3.1) and Streamable HTTP MCP, plus discovery (`/.well-known/usp`, `/llms.txt`) |
-| **Stores** | Nothing about customers. Only rate-limit counters (in memory, or an optional shared Redis store) |
-| **Runtime** | Node 24, plain JavaScript with type checking, three runtime dependencies |
+| **Stores** | No customer database. Only rate-limit counters, keyed by client address, in memory or in an optional shared Redis store |
+| **Runtime** | Node 24 (`engines` allows 22.12+), plain JavaScript with type checking, three runtime dependencies |
 | **Status** | Demo phase, fictional data only, not production-ready |
 | **License** | AGPL-3.0-only |
 
@@ -34,7 +34,7 @@ flowchart LR
     P -.->|"consent page"| C["Customer approves"]
 ```
 
-The gateway has no customer database. Rate-limit counters live in memory unless you configure the shared store.
+The gateway has no customer database. Rate-limit counters (keyed by client address) live in memory unless you configure the shared store.
 
 - Bookings are **propose and approve**: the assistant proposes, the customer approves on the salon's consent page, and the salon books only within what the customer approved (service, staff, time, duration, price).
 - For each incoming request that reaches salon authentication, the gateway calls `GET /api/v1/access` once to confirm split mode and the caller's scopes. The result is shared only within that request.
