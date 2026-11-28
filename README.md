@@ -6,18 +6,35 @@ The agent-facing front door for [Cresavo](https://github.com/Cresavo/cresavo) sa
 
 All data in this repository is fictional. The demo salon "Salong Eko" does not exist.
 
+## What this is
+
+Cresavo is open-source booking software for small service businesses. This repository is its agent-facing front door: the part that lets a customer's AI assistant (ChatGPT, Claude, Grok or any MCP client) discover a salon, read its treatments and free times, and *propose* a booking. The assistant never books on its own. The customer approves on the salon's consent page, and the salon books only within what was approved.
+
+| | |
+|---|---|
+| **Interfaces** | REST v1 (OpenAPI 3.1) and Streamable HTTP MCP, plus discovery (`/.well-known/usp`, `/llms.txt`) |
+| **Stores** | Nothing about customers. Only rate-limit counters (in memory, or an optional shared Redis store) |
+| **Runtime** | Node 24, plain JavaScript with type checking, three runtime dependencies |
+| **Status** | Demo phase, fictional data only, not production-ready |
+| **License** | AGPL-3.0-only |
+
+Related repository: [`Cresavo/cresavo`](https://github.com/Cresavo/cresavo), the salon workspace (studio, booking pages, booking engine) that this gateway sits in front of. Its [`docs/GATEWAY_SPLIT.md`](https://github.com/Cresavo/cresavo/blob/main/docs/GATEWAY_SPLIT.md) describes the contract between the two.
+
 ## Connect your booking system
 
 The gateway works with any booking system that implements the [provider contract](docs/PROVIDER_CONTRACT.md). Cresavo is the first. [`docs/CONNECT_A_PROVIDER.md`](docs/CONNECT_A_PROVIDER.md) takes you from a local trial to a conformance check (`npm run provider:check`) and the full agent scenarios against your own system.
 
 ## How it fits Cresavo
 
+```mermaid
+flowchart LR
+    A["AI assistant<br/>ChatGPT · Claude · Grok"] -->|"REST v1 or MCP"| G["gateway (this repo)<br/>tool schemas · discovery · OpenAPI · rate limits"]
+    G -->|"provider contract v1,<br/>service token"| P["Salon provider<br/>Cresavo/cresavo or your own"]
+    P --> D[("Salon data<br/>calendar · prices · consent · bookings")]
+    P -.->|"consent page"| C["Customer approves"]
 ```
-AI assistant ──▶ gateway (this repo)                ──▶ Cresavo salon provider (Cresavo/cresavo)
-                 REST v1, MCP, tool schemas,            database, calendar, prices, agent auth,
-                 discovery, OpenAPI, rate limits        customer consent, bookings
-                 no customer database; rate-limit counters in memory
-```
+
+The gateway has no customer database. Rate-limit counters live in memory unless you configure the shared store.
 
 - Bookings are **propose and approve**: the assistant proposes, the customer approves on the salon's consent page, and the salon books only within what the customer approved (service, staff, time, duration, price).
 - For each incoming request that reaches salon authentication, the gateway calls `GET /api/v1/access` once to confirm split mode and the caller's scopes. The result is shared only within that request.
